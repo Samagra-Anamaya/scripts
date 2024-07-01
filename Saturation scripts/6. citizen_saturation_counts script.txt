@@ -1,0 +1,184 @@
+------------------------------------------------------------------------------------------------------------------------------------
+---citizen_saturation_counts----------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------------------
+create table citizen_saturation_counts
+as
+select aadhaar_reference_number_src as source_id,count(1),'aadhaar_reference_number' as column_name
+from public.base_tribal_fields_saturated a
+where aadhaar_number is not null
+and not exists(select 1  from public.external_beneficiary_detail b where a.aadhaar_number = b."aadhaarVaultReference")
+group by  aadhaar_reference_number_src
+union all
+select aadhaar_number_src as source_id,count(1),'aadhaar_number' as column_name
+from public.base_tribal_fields_saturated a
+where aadhaar_number is not null
+and not exists(select 1  from public.external_beneficiary_detail b where a.aadhaar_number = b."aadhaarVaultReference")
+group by  aadhaar_number_src
+union all
+select rationcard_number_src as source_id,count(1),'rationcard_number' as column_name
+from public.base_tribal_fields_saturated a
+where aadhaar_number is not null
+and not exists(select 1  from public.external_beneficiary_detail b where a.aadhaar_number = b."aadhaarVaultReference")
+group by  rationcard_number_src
+union all
+select beneficiary_name_src as source_id,count(1),'beneficiary_name' as column_name
+from public.base_tribal_fields_saturated a
+where aadhaar_number is not null
+and not exists(select 1  from public.external_beneficiary_detail b where a.aadhaar_number = b."aadhaarVaultReference")
+group by  beneficiary_name_src
+union all
+select gender_src,count(1) as source_id,'gender' as column_name
+from public.base_tribal_fields_saturated a
+where aadhaar_number is not null
+and not exists(select 1  from public.external_beneficiary_detail b where a.aadhaar_number = b."aadhaarVaultReference")
+group by  gender_src  
+union all
+select date_of_birth_src as source_id,count(1),'date_of_birth' as column_name
+from public.base_tribal_fields_saturated a
+where aadhaar_number is not null
+and not exists(select 1  from public.external_beneficiary_detail b where a.aadhaar_number = b."aadhaarVaultReference")
+group by  date_of_birth_src  
+union all
+select year_of_birth_src as source_id,count(1),'year_of_birth' as column_name
+from public.base_tribal_fields_saturated a
+where aadhaar_number is not null
+and not exists(select 1  from public.external_beneficiary_detail b where a.aadhaar_number = b."aadhaarVaultReference")
+group by  year_of_birth_src  
+union all
+select social_category_src as source_id,count(1),'social_category' as column_name
+from public.base_tribal_fields_saturated a
+where aadhaar_number is not null
+and not exists(select 1  from public.external_beneficiary_detail b where a.aadhaar_number = b."aadhaarVaultReference")
+group by  social_category_src  
+union all
+select tribe_name_src as source_id,count(1),'tribe_name' as column_name
+from public.base_tribal_fields_saturated a
+where aadhaar_number is not null
+and not exists(select 1  from public.external_beneficiary_detail b where a.aadhaar_number = b."aadhaarVaultReference")
+group by  tribe_name_src
+union all
+select pvtg_or_nonpvtg_src as source_id,count(1),'pvtg_or_nonpvtg' as column_name
+from public.base_tribal_fields_saturated a
+where aadhaar_number is not null
+and not exists(select 1  from public.external_beneficiary_detail b where a.aadhaar_number = b."aadhaarVaultReference")
+group by  pvtg_or_nonpvtg_src
+union all
+select address_src as source_id,count(1),'address' as column_name
+from public.base_tribal_fields_saturated a
+where aadhaar_number is not null
+and not exists(select 1  from public.external_beneficiary_detail b where a.aadhaar_number = b."aadhaarVaultReference")
+group by  address_src
+union all
+select gp_name_src as source_id,count(1),'gp_name' as column_name
+from public.base_tribal_fields_saturated a
+where gp_name is not null
+and not exists(select 1  from public.external_beneficiary_detail b where a.aadhaar_number = b."aadhaarVaultReference")
+group by  gp_name_src
+union all
+select gp_code_src as source_id,count(1),'gp_code' as column_name
+from public.base_tribal_fields_saturated a
+where aadhaar_number is not null
+and not exists(select 1  from public.external_beneficiary_detail b where a.aadhaar_number = b."aadhaarVaultReference")
+group by  gp_code_src
+union all
+select block_name_src as source_id,count(1),'block_name' as column_name
+from public.base_tribal_fields_saturated a
+where aadhaar_number is not null
+and not exists(select 1  from public.external_beneficiary_detail b where a.aadhaar_number = b."aadhaarVaultReference")
+group by  block_name_src
+union all
+select block_code_src as source_id,count(1),'block_code' as column_name
+from public.base_tribal_fields_saturated a
+where aadhaar_number is not null
+and not exists(select 1  from public.external_beneficiary_detail b where a.aadhaar_number = b."aadhaarVaultReference")
+group by  block_code_src
+union all
+select district_name_src as source_id,count(1),'district_name' as column_name
+from public.base_tribal_fields_saturated a
+where aadhaar_number is not null
+and not exists(select 1  from public.external_beneficiary_detail b where a.aadhaar_number = b."aadhaarVaultReference")
+group by  district_name_src
+union all
+select district_code_src as source_id,count(1),'district_code' as column_name
+from public.base_tribal_fields_saturated a
+where aadhaar_number is not null
+and not exists(select 1  from public.external_beneficiary_detail b where a.aadhaar_number = b."aadhaarVaultReference")
+group by  district_code_src
+union all
+select village_name_src as source_id,count(1),'village_name' as column_name
+from public.base_tribal_fields_saturated a
+where aadhaar_number is not null
+and not exists(select 1  from public.external_beneficiary_detail b where a.aadhaar_number = b."aadhaarVaultReference")
+group by  village_name_src
+union all
+select village_lgd_src as source_id,count(1),'village_lgd' as column_name
+from public.base_tribal_fields_saturated a
+where aadhaar_number is not null
+and not exists(select 1  from public.external_beneficiary_detail b where a.aadhaar_number = b."aadhaarVaultReference")
+group by  village_lgd_src
+union all
+select pin_code_src as source_id,count(1),'pin_code' as column_name
+from public.base_tribal_fields_saturated a
+where aadhaar_number is not null
+and not exists(select 1  from public.external_beneficiary_detail b where a.aadhaar_number = b."aadhaarVaultReference")
+group by  pin_code_src
+union all
+select primary_mobile_number_src as source_id,count(1),'primary_mobile_number' as column_name
+from public.base_tribal_fields_saturated a
+where aadhaar_number is not null
+and not exists(select 1  from public.external_beneficiary_detail b where a.aadhaar_number = b."aadhaarVaultReference")
+group by  primary_mobile_number_src
+union all
+select primary_source_of_livelihood_src as source_id,count(1),'primary_source_of_livelihood' as column_name
+from public.base_tribal_fields_saturated a
+where aadhaar_number is not null
+and not exists(select 1  from public.external_beneficiary_detail b where a.aadhaar_number = b."aadhaarVaultReference")
+group by  primary_source_of_livelihood_src
+union all
+select primary_source_of_livelihood_timestamp_src as source_id,count(1),'primary_source_of_livelihood_timestamp' as column_name
+from public.base_tribal_fields_saturated a
+where aadhaar_number is not null
+and not exists(select 1  from public.external_beneficiary_detail b where a.aadhaar_number = b."aadhaarVaultReference")
+group by  primary_source_of_livelihood_timestamp_src
+union all
+select disability_status_src as source_id,count(1),'disability_status' as column_name
+from public.base_tribal_fields_saturated a
+where aadhaar_number is not null
+and not exists(select 1  from public.external_beneficiary_detail b where a.aadhaar_number = b."aadhaarVaultReference")
+group by  disability_status_src
+union all
+select marital_status_src as source_id,count(1),'marital_status' as column_name
+from public.base_tribal_fields_saturated a
+where aadhaar_number is not null
+and not exists(select 1  from public.external_beneficiary_detail b where a.aadhaar_number = b."aadhaarVaultReference")
+group by  marital_status_src
+union all
+select educational_qualification_src as source_id,count(1),'educational_qualification' as column_name
+from public.base_tribal_fields_saturated a
+where aadhaar_number is not null
+and not exists(select 1  from public.external_beneficiary_detail b where a.aadhaar_number = b."aadhaarVaultReference")
+group by  educational_qualification_src
+union all
+select number_of_members_in_family_src as source_id,count(1),'number_of_members_in_family' as column_name
+from public.base_tribal_fields_saturated a
+where aadhaar_number is not null
+and not exists(select 1  from public.external_beneficiary_detail b where a.aadhaar_number = b."aadhaarVaultReference")
+group by  number_of_members_in_family_src
+union all
+select annual_income_from_all_sources_src as source_id,count(1),'annual_income_from_all_sources' as column_name
+from public.base_tribal_fields_saturated a
+where aadhaar_number is not null
+and not exists(select 1  from public.external_beneficiary_detail b where a.aadhaar_number = b."aadhaarVaultReference")
+group by annual_income_from_all_sources_src
+union all
+select income_group_src as source_id,count(1),'income_group' as column_name
+from public.base_tribal_fields_saturated a
+where aadhaar_number is not null
+and not exists(select 1  from public.external_beneficiary_detail b where a.aadhaar_number = b."aadhaarVaultReference")
+group by income_group_src
+union all
+select land_holding_src as source_id,count(1),'land_holding' as column_name
+from public.base_tribal_fields_saturated a
+where aadhaar_number is not null
+and not exists(select 1  from public.external_beneficiary_detail b where a.aadhaar_number = b."aadhaarVaultReference")
+group by  land_holding_src

@@ -1,0 +1,482 @@
+
+------------------------------------------------------------------------------------------------------------------------------------
+---Base table having rows from all the sources:----------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------------------
+
+TRUNCATE TABLE base_tribal_fields;
+
+INSERT INTO public.base_tribal_fields
+(aadhaar_reference_number, aadhaar_number, rationcard_number, beneficiary_name, gender, date_of_birth, year_of_birth, social_category, tribe_name, pvtg_or_nonpvtg, address, gp_name, gp_code, block_name, block_code, district_name, district_code, village_name, village_lgd, pin_code, primary_mobile_number, primary_source_of_livelihood,primary_source_of_livelihood_timestamp, disability_status, marital_status, educational_qualification, number_of_members_in_family, annual_income_from_all_sources,income_group, land_holding, source_id, inserted_ts, updated_ts)
+
+
+
+--1.PDS -- dedupe
+with cte_pds_dedup as
+(
+select id,aadhaar_number,aadhaar_number_modified,rationcard_number,name,gp_ward,block_ulb,district,village,mobile_number,familyhead,type_of_card
+from 
+(
+select row_number() over(partition by (case when ISNUMERIC(TRIM(replace(replace(replace(aadhaar_number,'/',''),'`',''),'*',''))) then TRIM(replace(replace(replace(aadhaar_number,'/',''),'`',''),'*','')) else null end) order by id desc) as rn,
+case when ISNUMERIC(TRIM(replace(replace(replace(aadhaar_number,'/',''),'`',''),'*',''))) then TRIM(replace(replace(replace(aadhaar_number,'/',''),'`',''),'*','')) else null end as aadhaar_number_modified,
+* 
+from
+(
+select id,aadhaar_number,rationcard_number,name,gp_ward,block_ulb,district,village,mobile_number,familyhead,type_of_card
+from undefinedsfssmemberdatashare
+union all 
+select id,aadhaar_number,rationcard_number,name,gp_ward,block_ulb,district,village,mobile_number,familyhead,type_of_card
+from undefinednfsamemberdatashare
+)
+)pds where pds.rn = 1 
+),
+cte_mamata_dedup as
+(
+select * from 
+(
+select row_number() over(partition by (case when ISNUMERIC(TRIM(replace(replace(replace(aadhar_no,'/',''),'`',''),'*',''))) then TRIM(replace(replace(replace(aadhar_no,'/',''),'`',''),'*','')) else null end) order by id desc) as rn, * ,
+case when ISNUMERIC(TRIM(replace(replace(replace(aadhar_no,'/',''),'`',''),'*',''))) then TRIM(replace(replace(replace(aadhar_no,'/',''),'`',''),'*','')) else null end as aadhaar_number_modified
+from undefinedmamata
+)m where m.rn = 1
+
+),
+cte_opelip_dedup as
+(
+select * from 
+(
+select row_number() over(partition by (case when ISNUMERIC(TRIM(replace(replace(replace(aadhar_card_no_25,'/',''),'`',''),'*',''))) then TRIM(replace(replace(replace(aadhar_card_no_25,'/',''),'`',''),'*','')) else null end)
+ order by user_id desc) as rn, * ,case when ISNUMERIC(TRIM(replace(replace(replace(aadhar_card_no_25,'/',''),'`',''),'*',''))) then TRIM(replace(replace(replace(aadhar_card_no_25,'/',''),'`',''),'*','')) else null end as aadhaar_number_modified
+
+from external_opelip
+)o where o.rn = 1
+),
+cte_bsky_dedup as
+(
+select * from 
+(
+select urm.aadhaar, replace(CAST("scheme_data" AS varchar),'\','\\') as "scheme_data", aadhaar_reference_number,
+row_number () over (partition by st.aadhaar_reference_number order by st.id desc) as rn 
+from scheme_transaction st
+inner join undefinedaadhaar_reference_mapping urm on st.aadhaar_reference_number = urm.aadhaar_reference
+where 
+TRIM(UPPER(scheme_code)) = 'BSKY'
+--cast("scheme_data" as jsonb)->>'rationCardNo' as rationcard_number,
+)res where res.rn = 1
+),
+--{"annualIncome": null, "rationCardNo": "13063811596", "socialCategory": null, "primaryMobileNumber": "7358355189", "educationalQualification": null}
+cte_mbpy_dedup as
+(
+select * from 
+(
+select *,row_number () over (partition by "aadhar_number" order by id desc) as rn
+from 
+--undefinedmbpy_application_new mbpy
+undefinedmbpy mbpy
+WHERE
+     mbpy."aadhar_number" IS NOT NULL AND mbpy."aadhar_number" <> '' 
+ --   AND mbpy."sanction_date" IS NOT NULL AND mbpy."sanction_date" <> ''
+ --   AND EXTRACT(YEAR FROM to_date(case when isnumeric(replace(mbpy."sanction_date",'/','')) then mbpy."sanction_date" else null end,'dd/mm/yyyy')) IN (2019, 2020, 2021, 2022, 2023)
+ --  AND mbpy."mbpy_scheme_id"::int IN (1, 3, 4, 6)
+
+)res where res.rn = 1
+),
+
+--scholarship dedupe
+cte_scholarship_dedup as
+(
+select * from 
+(
+select replace(CAST("scheme_data" AS VARCHAR),'\','\\') as "scheme_data",st.aadhaar_reference_number,st.transaction_date,
+row_number () over (partition by st.aadhaar_reference_number  order by st.id desc) as rn,
+urm.aadhaar
+ from 
+scheme_transaction st
+inner join undefinedaadhaar_reference_mapping urm on st.aadhaar_reference_number = urm.aadhaar_reference
+where 
+TRIM(UPPER(scheme_code)) in ('POSTMAT','PREMAT910')
+)res where res.rn = 1
+),
+cte_sams_dedup as
+(
+select * from 
+(
+select st.*, ben."aadhaarVaultReference" as aadhaar_number,row_number () over (partition by ben."aadhaarVaultReference" order by st.id desc) as rn from 
+
+(select replace(CAST("scheme_data" AS VARCHAR),'\','\\') as "scheme_data",
+TRIM(cast(replace(CAST("scheme_data" AS VARCHAR),'\','\\') as jsonb)->>'hashed_aadhar') as hashed_aadhar,id,aadhaar_reference_number,transaction_date
+from scheme_transaction where TRIM(UPPER(scheme_code)) ='SAMS1') st
+inner join 
+(select distinct "aadhaarVaultReference" from external_beneficiary_detail) ben
+on st.hashed_aadhar = concat('0x',UPPER(encode(sha256(ben."aadhaarVaultReference"::bytea), 'hex')))
+--cast("scheme_data" as jsonb)->>'rationCardNo' as rationcard_number,
+)res where res.rn = 1
+),
+
+cte_no_of_family_members as 
+(
+select count(id) as number_of_members_in_family,familyhead,rationcard_number
+from cte_pds_dedup 
+group by familyhead,rationcard_number
+)
+
+select 
+coalesce(cast(aadhaar_reference_number as varchar),'0') as aadhaar_reference_number, coalesce(cast(aadhaar_number as varchar),'0') as aadhaar_number, rationcard_number, beneficiary_name, gender, date_of_birth, year_of_birth, 
+social_category, tribe_name, pvtg_or_nonpvtg, address, 
+gp_name, 
+coalesce(gp_code,cast(v."gpCode" as varchar)) as gp_code,
+block_name, 
+coalesce(block_code,cast(v."blockCode" as varchar)) AS block_code,
+district_name, 
+coalesce(district_code,cast(v."districtCode" as varchar)) AS district_code,
+village_name, 
+coalesce(village_lgd,cast(v."spdpVillageId" as varchar)) as village_lgd,
+pin_code, case when primary_mobile_number = '1111111111' then null else primary_mobile_number end as primary_mobile_number, primary_source_of_livelihood,
+primary_source_of_livelihood_timestamp,
+disability_status, marital_status, educational_qualification, number_of_members_in_family, 
+annual_income_from_all_sources,income_group, land_holding, source_id,current_timestamp as inserted_ts, null as updated_ts
+from 
+(
+------------------------------------------------------
+--1.PDS
+------------------------------------------------------
+select 
+urm.aadhaar_reference AS aadhaar_reference_number,
+aadhaar_number_modified as aadhaar_number,
+s.rationcard_number  as rationcard_number,
+name as beneficiary_name,
+null as gender,
+null as date_of_birth,
+null as year_of_birth,
+null as	social_category,
+null as tribe_name,
+null as pvtg_or_nonpvtg,
+null as address,
+gp_ward  as gp_name,
+null  as gp_code,
+block_ulb as block_name,
+NULL AS block_code,
+district as district_name,
+NULL AS district_code,
+village  as village_name,
+null as village_lgd,
+NULL AS pin_code,
+case when ISNUMERIC(TRIM(mobile_number)) and length(TRIM(mobile_number)) = 10 then TRIM(mobile_number) else null end as primary_mobile_number,
+null as primary_source_of_livelihood,
+null as primary_source_of_livelihood_timestamp,
+null as disability_status,
+null as marital_status,
+null as educational_qualification,
+fm.number_of_members_in_family as number_of_members_in_family,
+null as annual_income_from_all_sources,
+type_of_card as income_group,
+null as land_holding,
+1 as source_id
+from cte_pds_dedup s 
+left join cte_no_of_family_members fm on s.rationcard_number = fm.rationcard_number and s.familyhead = fm.familyhead
+LEFT JOIN undefinedaadhaar_reference_mapping urm ON urm.aadhaar = s.aadhaar_number_modified
+where ISNUMERIC(aadhaar_number_modified)
+------------------------------------------------------
+union all
+------------------------------------------------------
+--2.MAMATA
+------------------------------------------------------
+select 
+aadhaar_reference AS aadhaar_reference_number,
+aadhaar_number_modified as aadhaar_number,
+null as rationcard_number,
+pw_name as beneficiary_name,
+null as gender,
+null as date_of_birth,
+cast((case when ISNUMERIC(LEFT(m.pregnancy_reg_date,4)) then cast(LEFT(m.pregnancy_reg_date,4) as Int) else null
+end)-cast(m.age as INT) as varchar) as year_of_birth,
+caste_name as	social_category,
+null as tribe_name,
+pvtg_or_not as pvtg_or_nonpvtg,
+null as address,
+null as gp_name,
+NULL AS gp_code,
+null as block_name,
+NULL AS block_code,
+district_name  as district_name,
+NULL AS district_code,
+null as village_name,
+uc.village_lgd as village_lgd,
+NULL AS pin_code,
+case when ISNUMERIC(TRIM(pw_mobileno)) and length(TRIM(pw_mobileno)) = 10 then TRIM(pw_mobileno) else null end as primary_mobile_number,
+null as primary_source_of_livelihood,
+null as primary_source_of_livelihood_timestamp,
+person_with_disab  as disability_status,
+case when TRIM(pw_husband_name) is null or TRIM(pw_husband_name) = '' or TRIM(pw_husband_name) = 'NA' then null else 'Married' end as marital_status,
+null as educational_qualification,
+null as number_of_members_in_family,
+null as annual_income_from_all_sources,
+null as income_group,
+null as land_holding,
+2 as source_id
+from
+cte_mamata_dedup m 
+left join (select distinct awc_code,village_lgd from undefinedanganwadi_centres)uc
+on uc.awc_code = m.center_code
+LEFT JOIN undefinedaadhaar_reference_mapping urm ON urm.aadhaar = m.aadhaar_number_modified
+where ISNUMERIC(aadhaar_number_modified)
+------------------------------------------------------
+union all
+------------------------------------------------------
+--3.OPELIP
+------------------------------------------------------
+select  
+urm.aadhaar_reference AS aadhaar_reference_number,
+aadhaar_number_modified as aadhaar_number,
+null as rationcard_number,
+name_of_beneficiary_1 as beneficiary_name,
+case 
+when TRIM(gender_21)='(Female)Female' then 'Female'
+when TRIM(gender_21)='(Male)Male' then 'Male'
+else null
+end as gender,	
+null as date_of_birth,
+null as year_of_birth,
+null as	social_category,
+case 
+when au_2='BDA Mudulipada' then 'Bonda'
+when au_2='BJDA Sukinda' then 'Birhor, Juang'
+when au_2='CBDA Sunabeda' then 'ChuktiaBhunjia'
+when au_2='DDA Kudumuluguma' then 'Didayi'
+when au_2='DKDA Chatikona-B' then 'DangriaKandha'
+when au_2='DKDA Chatikona-M' then 'DangriaKandha'
+when au_2='DKDA Parsali' then 'DangriaKandha '
+when au_2='HKMDA Jashipur' then 'Hill Kharia, Mankiridia, Birhor'
+when au_2='JDA Dhenkanal' then 'Juang'
+when au_2='JDA Gonasika' then 'Juang'
+when au_2='KKDA Belghar' then 'KutiaKandha'
+when au_2='KKDA Lanjigarh' then 'KutiaKandha'
+when au_2='LDA Morada' then 'Lodha'
+when au_2='LSDA Putasing' then 'Lanjia Saora'
+when au_2='LSDA Serango' then 'Lanjia Saora'
+when au_2='PBDA Banspal' then 'PaudiBhuyan'
+when au_2='PBDA Jamardihi' then 'PaudiBhuyan'
+when au_2='PBDA Khuntugaon' then 'PaudiBhuyan'
+when au_2='PBDA Rugudakudara' then 'PaudiBhuyan'
+when au_2='SDA Chandragiri' then 'Saora'
+when au_2='TDA Tumba' then 'Saora' else null end as tribe_name,
+case when trim(UPPER(village_category)) = 'PVTG' then 'true' 
+when trim(UPPER(village_category)) = 'NON PVTG' then 'false' else null end as pvtg_or_nonpvtg,
+null as address,
+null as gp_name,
+NULL AS gp_code,
+null as block_name,
+NULL AS block_code,
+null as district_name,
+NULL AS district_code,
+null as village_name,
+null as village_lgd,
+NULL AS pin_code,
+case when ISNUMERIC(TRIM(mobile_no_14)) and length(TRIM(mobile_no_14)) = 10 then TRIM(mobile_no_14) else null end as primary_mobile_number,
+null as primary_source_of_livelihood,
+null as primary_source_of_livelihood_timestamp,
+null as disability_status,
+null as marital_status,
+null as educational_qualification,
+null as number_of_members_in_family,
+null as annual_income_from_all_sources,
+null as income_group,
+null as land_holding,
+3 as source_id
+from cte_opelip_dedup o 
+LEFT JOIN undefinedaadhaar_reference_mapping urm ON urm.aadhaar = o.aadhaar_number_modified
+where ISNUMERIC(aadhaar_number_modified)
+------------------------------------------------------
+union all 
+------------------------------------------------------
+--4.BSKY
+------------------------------------------------------
+--{"annualIncome": null, "rationCardNo": "22272711114", "socialCategory": null, "primaryMobileNumber": null, "educationalQualification": null}
+select  
+aadhaar_reference_number as aadhaar_reference_number,
+aadhaar as aadhaar_number,
+TRIM(cast("scheme_data" as jsonb)->>'rationCardNo') as rationcard_number,
+null as beneficiary_name, -- beneficiary_name not found
+null as gender,	-- gender not found
+null as date_of_birth,
+null as year_of_birth,
+TRIM(cast("scheme_data" as jsonb)->>'socialCategory') as social_category,
+null as tribe_name,
+null as pvtg_or_nonpvtg,
+null as address,
+null as gp_name,
+NULL AS gp_code,
+null as block_name,
+NULL AS block_code,
+null as district_name,
+NULL AS district_code,
+null as village_name,
+null as village_lgd,
+NULL AS pin_code,
+case when ISNUMERIC(TRIM(cast("scheme_data" as jsonb)->>'primaryMobileNumber')) and 
+length(TRIM(cast("scheme_data" as jsonb)->>'primaryMobileNumber')) = 10 then TRIM(cast("scheme_data" as jsonb)->>'primaryMobileNumber') else null end as primary_mobile_number,
+null as primary_source_of_livelihood,
+null as primary_source_of_livelihood_timestamp,
+null as disability_status,
+null as marital_status,
+TRIM(cast("scheme_data" as jsonb)->>'educationalQualification') as educational_qualification,
+null as number_of_members_in_family,
+TRIM(cast("scheme_data" as jsonb)->>'annualIncome') as annual_income_from_all_sources,
+null as income_group,
+null as land_holding,
+4 as source_id
+from cte_bsky_dedup o 
+where aadhaar is not null and aadhaar <> '' and aadhaar <> '0'
+
+------------------------------------------------------
+union all 
+------------------------------------------------------
+--5.MBPY
+------------------------------------------------------
+
+select 
+aadhaar_reference AS aadhaar_reference_number,
+TRIM(replace(replace(replace(aadhar_number,'/',''),'`',''),'*','')) as aadhaar_number,
+null as rationcard_number,
+applicant_name as beneficiary_name,
+case 
+when TRIM(gender_id)='1' then 'Male'
+when TRIM(gender_id)='2' then 'Female'
+else null
+end as gender,	
+applicant_dob as date_of_birth,
+cast(extract(year from to_date(applicant_dob,
+CASE
+           WHEN applicant_dob LIKE '____-__-__' THEN 'YYYY-MM-DD'
+           WHEN applicant_dob LIKE '__-__-____' THEN 'DD-MM-YYYY'
+         end)) AS varchar) as year_of_birth,
+'ST' as	social_category,--column not found
+null as tribe_name,
+null as pvtg_or_nonpvtg,
+null as address,
+gp_name as gp_name,
+gp_id as gp_code,
+block_name as block_name,
+block_id as block_code,
+district_name as district_name,
+district_id as district_code,
+village_name as village_name,
+village_id as village_lgd,
+pin_number as pin_code,
+case when ISNUMERIC(TRIM(mobile_number)) and length(TRIM(mobile_number)) = 10 then TRIM(mobile_number) else null end as primary_mobile_number,
+null as primary_source_of_livelihood,
+null as primary_source_of_livelihood_timestamp,
+case when trim(disability_type_id) is null then null 
+	when trim(disability_type_id) = '' then 'false' else 'true' end  as disability_status,
+null as marital_status,-- column not available
+null as educational_qualification,
+null as number_of_members_in_family,
+null as annual_income_from_all_sources,
+null as income_group,
+null as land_holding,
+5 as source_id
+from cte_mbpy_dedup o 
+LEFT JOIN undefinedaadhaar_reference_mapping urm ON urm.aadhaar = TRIM(replace(replace(replace(aadhar_number,'/',''),'`',''),'*',''))
+where ISNUMERIC(TRIM(replace(replace(replace(aadhar_number,'/',''),'`',''),'*','')))
+and aadhar_number is not null and aadhar_number <> ''
+
+------------------------------------------------------
+union all 
+
+------------------------------------------------------
+--6.Scholarships
+------------------------------------------------------
+
+SELECT 
+aadhaar_reference_number as aadhaar_reference_number,
+aadhaar as aadhaar_number,
+null as rationcard_number,
+TRIM(cast("scheme_data" as jsonb)->>'beneficiaryName') as beneficiary_name, -- beneficiary_name not found
+TRIM(cast("scheme_data" as jsonb)->>'gender') as gender,	-- gender not found
+null as date_of_birth,
+null as year_of_birth,
+TRIM(cast("scheme_data" as jsonb)->>'socialCategory') as social_category,
+TRIM(cast("scheme_data" as jsonb)->>'tribeName') as tribe_name,
+TRIM(cast("scheme_data" as jsonb)->>'pvtgNonPvtg') as pvtg_or_nonpvtg,
+TRIM(cast("scheme_data" as jsonb)->>'domicileAddress') as address,
+NULL AS gp_name,
+TRIM(cast("scheme_data" as jsonb)->>'domicileGPWardCode') as gp_code,
+NULL AS block_name,
+TRIM(cast("scheme_data" as jsonb)->>'domicileBlockULBCode') as block_code,
+NULL AS district_name,
+TRIM(cast("scheme_data" as jsonb)->>'domicileDistrictCode') as district_code,
+null as village_name,
+null as village_lgd,
+TRIM(cast("scheme_data" as jsonb)->>'addressDomicilePinCode') as pin_code,
+case when ISNUMERIC(TRIM(cast("scheme_data" as jsonb)->>'primaryMobileNumber')) and 
+length(TRIM(cast("scheme_data" as jsonb)->>'primaryMobileNumber')) = 10 then TRIM(cast("scheme_data" as jsonb)->>'primaryMobileNumber') else null end as primary_mobile_number,
+'Student' as primary_source_of_livelihood,
+transaction_date as primary_source_of_livelihood_timestamp,
+null as disability_status,
+'Unmarried' as marital_status,--not found
+TRIM(cast("scheme_data" as jsonb)->>'educationalQualification') as educational_qualification,
+null as number_of_members_in_family,
+TRIM(cast("scheme_data" as jsonb)->>'annualIncome') as annual_income_from_all_sources,
+null as income_group,
+null as land_holding,
+6 as source_id
+from cte_scholarship_dedup o 
+where aadhaar is not null and aadhaar <> '' and aadhaar <> '0'
+
+------------------------------------------------------
+union all 
+------------------------------------------------------
+--7.SAMS
+------------------------------------------------------
+SELECT 
+aadhaar_reference_number as aadhaar_reference_number,
+aadhaar_number as aadhaar_number,
+TRIM(cast("scheme_data" as jsonb)->>'rationCardNumber') as rationcard_number,
+TRIM(cast("scheme_data" as jsonb)->>'beneficiaryName') as beneficiary_name, -- beneficiary_name not found
+TRIM(cast("scheme_data" as jsonb)->>'gender') as gender,	-- gender not found
+TRIM(cast("scheme_data" as jsonb)->>'dateOfBirth') as date_of_birth,
+null as year_of_birth,
+TRIM(cast("scheme_data" as jsonb)->>'socialCategory') as social_category,
+TRIM(cast("scheme_data" as jsonb)->>'tribeName') as tribe_name,
+TRIM(cast("scheme_data" as jsonb)->>'pvtgNonPvtg') as pvtg_or_nonpvtg,
+TRIM(cast("scheme_data" as jsonb)->>'domicileAddress') as address,
+NULL AS gp_name,
+TRIM(cast("scheme_data" as jsonb)->>'domicileGPWardCode') as gp_code,
+NULL AS block_name,
+TRIM(cast("scheme_data" as jsonb)->>'domicileBlockULBCode') as block_code,
+NULL AS district_name,
+TRIM(cast("scheme_data" as jsonb)->>'domicileDistrictCode') as district_code,
+null as village_name,
+null as village_lgd,
+TRIM(cast("scheme_data" as jsonb)->>'addressDomicilePinCode') as pin_code,
+case when ISNUMERIC(TRIM(cast("scheme_data" as jsonb)->>'primaryMobileNumber')) and 
+length(TRIM(cast("scheme_data" as jsonb)->>'primaryMobileNumber')) = 10 then TRIM(cast("scheme_data" as jsonb)->>'primaryMobileNumber') else null end as primary_mobile_number,
+'Student' as primary_source_of_livelihood,
+transaction_date as primary_source_of_livelihood_timestamp,
+case when TRIM(cast("scheme_data" as jsonb)->>'disabilityInfoUDIDNumber') = '' or TRIM(cast("scheme_data" as jsonb)->>'disabilityInfoUDIDNumber') is null then 'false' else 'true' end as disability_status,
+null as marital_status,--not found
+TRIM(cast("scheme_data" as jsonb)->>'qualification') as educational_qualification,
+null as number_of_members_in_family,
+TRIM(cast("scheme_data" as jsonb)->>'annualIncome') as annual_income_from_all_sources,
+null as income_group,
+null as land_holding,
+7 as source_id
+from cte_sams_dedup o 
+where aadhaar_number is not null and aadhaar_number <> '' and aadhaar_number <> '0'
+
+------------------------------------------------------
+) as all_transactions 
+left join 
+(
+select * from 
+(select row_number() over (partition by upper(trim("villageName")),TRIM(UPPER("districtName")),TRIM(UPPER("gpName")),TRIM(UPPER("blockName")) 
+    order by id) as rn, upper(trim("villageName")) as "villageName",TRIM(UPPER("districtName")) as "districtName"
+    ,TRIM(UPPER("gpName")) as "gpName",TRIM(UPPER("blockName")) as "blockName",
+    replace("spdpVillageId",',','') as "spdpVillageId",
+    replace("districtCode",',','') as "districtCode",
+    replace("blockCode",',','') as "blockCode",
+    replace("gpCode",',','') as "gpCode"
+from "VillageData"
+)res where res.rn = 1) v 
+on upper(trim("villageName")) = upper(trim(all_transactions.village_name)) and 
+TRIM(UPPER("districtName")) = upper(trim(all_transactions.district_name)) and 
+TRIM(UPPER("gpName"))= upper(trim(all_transactions.gp_name)) and 
+TRIM(UPPER("blockName")) = upper(trim(all_transactions.block_name)) 
