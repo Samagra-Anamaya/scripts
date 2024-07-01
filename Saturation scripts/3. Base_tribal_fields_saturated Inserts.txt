@@ -1,0 +1,583 @@
+------------------------------------------------------------------------------------------------------------------------------------
+---Final table to load the tribal saturated fields:----------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------------------
+
+INSERT INTO public.base_tribal_fields_saturated
+(aadhaar_reference_number, aadhaar_reference_number_src, aadhaar_number, aadhaar_number_src, rationcard_number, rationcard_number_src, beneficiary_name, beneficiary_name_src, gender, gender_src, date_of_birth, date_of_birth_src, year_of_birth, year_of_birth_src, social_category, social_category_src, tribe_name, tribe_name_src, pvtg_or_nonpvtg, pvtg_or_nonpvtg_src, address, address_src, gp_name, gp_name_src, gp_code, gp_code_src, block_name, block_name_src, block_code, block_code_src, district_name, district_name_src, district_code, district_code_src, village_name, village_name_src, village_lgd, village_lgd_src, pin_code, pin_code_src, primary_mobile_number, primary_mobile_number_src, primary_source_of_livelihood, primary_source_of_livelihood_src, primary_source_of_livelihood_timestamp, primary_source_of_livelihood_timestamp_src,disability_status, disability_status_src, marital_status, marital_status_src, educational_qualification, educational_qualification_src, number_of_members_in_family, number_of_members_in_family_src, annual_income_from_all_sources, annual_income_from_all_sources_src,income_group,income_group_src, land_holding, land_holding_src, inserted_ts, updated_ts)
+
+select aadhaar_reference_number, aadhaar_reference_number_src, aadhaar_number, aadhaar_number_src, rationcard_number, rationcard_number_src, beneficiary_name, beneficiary_name_src, gender, gender_src, date_of_birth, date_of_birth_src, year_of_birth, year_of_birth_src, COALESCE(social_category,'ST') AS social_category, COALESCE(social_category_src,aadhaar_number_src) AS social_category_src, tribe_name, tribe_name_src, pvtg_or_nonpvtg, pvtg_or_nonpvtg_src, address, address_src, 
+coalesce(gp_name,vill."gpName",gp."gpName") as gp_name,
+coalesce(gp_name_src,case when (vill."gpName" is not null or gp."gpName" is not NULL) then 8 else null end) as  gp_name_src,
+coalesce(gp_code,vill."gpCode",gp1."gpCode") as gp_code,
+coalesce(gp_code_src,case when (vill."gpCode" is not null or gp1."gpCode" is not null ) then 8 else null end) as  gp_code_src,
+
+coalesce(block_name,vill."blockName",block."blockName") as block_name,
+coalesce(block_name_src,case when (vill."blockName" is not null or block."blockName" is not NULL) then 8 else null end) as  block_name_src,
+coalesce(block_code,vill."blockCode",block1."blockCode") as block_code,
+coalesce(block_code_src,case when (vill."blockCode" is not null or block1."blockCode" is not null) then 8 else null end) as  block_code_src,
+
+coalesce(district_name, vill."districtName",dist."districtName") as district_name,
+coalesce(district_name_src, case when (vill."districtName" is not null or dist."districtName" is not NULL) then 8 else null end) as district_name_src,
+coalesce(district_code, vill."districtCode", dist1."districtCode") as district_code,
+coalesce(district_code_src, case when (vill."districtCode" is not null or dist1."districtCode" is not null) then 8 else null end) as district_code_src,
+
+coalesce(village_name,vill."villageName") as village_name,
+coalesce(village_name_src,case when vill."villageName" is not null then 8 else null end) as  village_name_src,
+coalesce(village_lgd,vill."spdpVillageId",vill1."spdpVillageId") as village_lgd,
+coalesce(village_lgd_src,case when (vill."spdpVillageId" is not null or vill1."spdpVillageId" is not null) then 8 else null end) as village_lgd_src, 
+
+pin_code, pin_code_src, primary_mobile_number, primary_mobile_number_src, primary_source_of_livelihood, primary_source_of_livelihood_src,primary_source_of_livelihood_timestamp, primary_source_of_livelihood_timestamp_src, disability_status, disability_status_src, marital_status, marital_status_src, educational_qualification, educational_qualification_src, number_of_members_in_family, number_of_members_in_family_src, annual_income_from_all_sources, annual_income_from_all_sources_src,income_group,income_group_src, land_holding, land_holding_src, inserted_ts, updated_ts
+
+--select count(1)
+from 
+(
+select
+coalesce(
+case when length(bsky.aadhaar_reference_number) <> 13 then null else bsky.aadhaar_reference_number end,
+case when length(sch.aadhaar_reference_number) <> 13 then null else sch.aadhaar_reference_number end)
+as aadhaar_reference_number,
+
+case 
+when bsky.aadhaar_reference_number  is not null and bsky.aadhaar_reference_number  <> '' then bsky.source_id
+when sch.aadhaar_reference_number is not null and sch.aadhaar_reference_number <> '' then sch.source_id
+else null
+end as aadhaar_reference_number_src,
+
+coalesce(
+case when length(ebd."aadhaarVaultReference") <> 12 then null else ebd."aadhaarVaultReference" end,
+case when length(s.aadhaar_number) <> 12 then null else s.aadhaar_number end,
+case when length(m.aadhaar_number ) <> 12 then null else m.aadhaar_number end,
+case when length(sams.aadhaar_number ) <> 12 then null else sams.aadhaar_number end,
+case when length(mbpy.aadhaar_number) <> 12 then null else mbpy.aadhaar_number end,
+case when length(o.aadhaar_number) <> 12 then null else o.aadhaar_number end,
+case when length(bsky.aadhaar_number) <> 12 then null else bsky.aadhaar_number end,
+case when length(sch.aadhaar_number) <> 12 then null else sch.aadhaar_number end
+) as aadhaar_number,
+
+case 
+when ebd."aadhaarVaultReference" is not null and length(ebd."aadhaarVaultReference") = 12 then 0
+when s.aadhaar_number is not null and length(s.aadhaar_number) = 12 then s.source_id
+when m.aadhaar_number is not null and length(m.aadhaar_number) = 12 then m.source_id
+when sams.aadhaar_number is not null and length(sams.aadhaar_number) = 12 then sams.source_id
+when mbpy.aadhaar_number is not null and length(mbpy.aadhaar_number) = 12 then mbpy.source_id
+when o.aadhaar_number is not null and length(o.aadhaar_number) = 12 then o.source_id
+when bsky.aadhaar_number is not null and length(bsky.aadhaar_number) = 12 then bsky.source_id
+when sch.aadhaar_number is not null and length(sch.aadhaar_number) = 12 then sch.source_id
+else null
+end as aadhaar_number_src,
+
+coalesce (
+case when ebd."rationCardNumber" is null or length(ebd."rationCardNumber") not in (10,11) then null 
+else ebd."rationCardNumber" end,
+case when length(s.rationcard_number) not in (10,11) then null else s.rationcard_number end,
+case when length(bsky.rationcard_number) not in (10,11) then null else bsky.rationcard_number end,
+case when length(o.rationcard_number) not in (10,11) then null else o.rationcard_number end
+) 
+as rationcard_number,
+case
+when ebd."rationCardNumber" is not null and length(ebd."rationCardNumber")  in (10,11)  then 0
+when TRIM(s.rationcard_number) is not null and length(s.rationcard_number) in (10,11) then s.source_id
+when TRIM(bsky.rationcard_number) is not null and length(bsky.rationcard_number)  in (10,11)  then bsky.source_id
+when TRIM(o.rationcard_number) is not null and length(o.rationcard_number)  in (10,11)  then o.source_id
+else null
+end as rationcard_number_src,
+
+UPPER(COALESCE(
+case when ebd."beneficiaryName" = '' then null else ebd."beneficiaryName" end,
+case when s.beneficiary_name = '' then null else s.beneficiary_name end,
+case when m.beneficiary_name = '' then null else m.beneficiary_name end,
+case when bsky.beneficiary_name = '' then null else bsky.beneficiary_name end,
+case when sch.beneficiary_name = '' then null else sch.beneficiary_name end,
+case when sams.beneficiary_name = '' then null else sams.beneficiary_name end,
+case when mbpy.beneficiary_name = '' then null else mbpy.beneficiary_name end,
+case when o.beneficiary_name = '' then null else o.beneficiary_name end)) AS  beneficiary_name,
+
+case 
+when ebd."beneficiaryName" is not null and ebd."beneficiaryName" <> '' then 0
+when s.beneficiary_name is not null and s.beneficiary_name <> '' then s.source_id
+when m.beneficiary_name is not null and m.beneficiary_name <> '' then m.source_id
+when bsky.beneficiary_name is not null and bsky.beneficiary_name <> '' then bsky.source_id
+when sch.beneficiary_name is not null and sch.beneficiary_name <> '' then sch.source_id
+when sams.beneficiary_name is not null and sams.beneficiary_name <> '' then sams.source_id
+when mbpy.beneficiary_name is not null and mbpy.beneficiary_name <> '' then mbpy.source_id
+when o.beneficiary_name is not null and o.beneficiary_name <> '' then o.source_id
+else null
+end as beneficiary_name_src,
+
+coalesce (
+case when ebd.gender = '' then null else ebd.gender end,
+case when s.gender = '' then null else s.gender end,
+case when m.gender = '' then null else m.gender end,
+case when bsky.gender = '' then null else bsky.gender end,
+case when sams.gender = '' then null else sams.gender end,
+case when sch.gender = '' then null else sch.gender end,
+case when o.gender = '' then null else o.gender end,
+case when mbpy.gender = '' then null else mbpy.gender end) 
+AS gender,
+
+case 
+when ebd.gender is not null and ebd.gender <> '' then 0
+when s.gender is not null and s.gender <> '' then s.source_id
+when m.gender is not null and m.gender <> '' then m.source_id
+when bsky.gender is not null and bsky.gender <> '' then bsky.source_id
+when sams.gender is not null and sams.gender <> '' then sams.source_id
+when sch.gender is not null and sch.gender <> '' then sch.source_id
+when o.gender is not null and o.gender <> '' then o.source_id
+when mbpy.gender is not null and mbpy.gender <> '' then mbpy.source_id
+else null 
+end as gender_src,
+
+coalesce(case when ebd."dateOfBirth" = '' then null else ebd."dateOfBirth" end,
+case when o.date_of_birth = '' then null else o.date_of_birth end,
+case when mbpy.date_of_birth = '' then null else mbpy.date_of_birth end,
+case when sams.date_of_birth = '' then null else sams.date_of_birth end
+) as date_of_birth,
+
+case 
+when ebd."dateOfBirth" <> '' and ebd."dateOfBirth" is not null then 0  
+when o.date_of_birth <> '' and o.date_of_birth is not null then o.source_id 
+when mbpy.date_of_birth <> '' and mbpy.date_of_birth is not null then mbpy.source_id 
+when sams.date_of_birth <> '' and sams.date_of_birth is not null then sams.source_id 
+else null 
+end as date_of_birth_src,
+
+case when ebd."dateOfBirth" is null or TRIM(ebd."dateOfBirth") = '' then m.year_of_birth else null end as year_of_birth, 
+
+case when (ebd."dateOfBirth" is null or TRIM(ebd."dateOfBirth") = '') and m.year_of_birth is not null then m.source_id
+else null end as year_of_birth_src,
+
+coalesce (
+case when ebd."socialCategory" = '' then null else ebd."socialCategory" end,
+case when s.social_category = '' then null else s.social_category end,
+case when m.social_category = '' then null else m.social_category end,
+case when bsky.social_category = '' then null else bsky.social_category end,
+case when sams.social_category = '' then null else sams.social_category end,
+case when sch.social_category = '' then null else sch.social_category end,
+case when o.social_category = '' then null else o.social_category end,
+case when mbpy.social_category = '' then null else mbpy.social_category end
+) as social_category,
+
+case 
+when ebd."socialCategory" is not null and ebd."socialCategory" <> '' then 0
+when s.social_category is not null and s.social_category <> '' then s.source_id
+when m.social_category is not null and m.social_category <> '' then m.source_id
+when bsky.social_category is not null and bsky.social_category <> '' then bsky.source_id
+when sams.social_category is not null and sams.social_category <> '' then sams.source_id
+when sch.social_category is not null and sch.social_category <> '' then sch.source_id
+when o.social_category is not null and o.social_category <> '' then o.source_id
+when mbpy.social_category is not null and mbpy.social_category <> '' then mbpy.source_id
+else null
+end as social_category_src,
+
+coalesce(
+case when o.tribe_name = '' then null else o.tribe_name end,
+case when m.tribe_name = '' then null else m.tribe_name end
+) as tribe_name,
+
+case  
+when o.tribe_name is not null and o.tribe_name <> '' then o.source_id
+when m.tribe_name is not null and m.tribe_name <> '' then m.source_id
+else null
+end as  tribe_name_src,
+
+coalesce(case when o.pvtg_or_nonpvtg = '' then null else o.pvtg_or_nonpvtg end,
+case when m.pvtg_or_nonpvtg = '' then null else m.pvtg_or_nonpvtg end)  
+as pvtg_or_nonpvtg,
+
+case  
+when o.pvtg_or_nonpvtg is not null and o.pvtg_or_nonpvtg <> '' then o.source_id
+when m.pvtg_or_nonpvtg is not null and m.pvtg_or_nonpvtg <> '' then m.source_id
+else null
+end as pvtg_or_nonpvtg_src,
+
+coalesce (
+case when ebd.address = '' then null else ebd.address end,
+case when s.address = '' then null else s.address end) 
+as address,
+
+case 
+when ebd.address is not null and ebd.address <> '' then 0
+when s.address is not null and s.address <> '' then s.source_id
+else null
+end as address_src,
+
+coalesce (
+case when ebd."gpName" = '' then null else ebd."gpName" end,
+case when s.gp_name = '' then null else s.gp_name end,
+case when sch.gp_name = '' then null else sch.gp_name end,
+case when o.gp_name = '' then null else o.gp_name end,
+case when m.gp_name = '' then null else m.gp_name end,
+case when mbpy.gp_name = '' then null else mbpy.gp_name end
+)  as gp_name,
+
+case 
+when ebd."gpName" is not null and "gpName" <> '' then 0
+when s.gp_name is not null and s.gp_name <> '' then s.source_id
+when sch.gp_name is not null and sch.gp_name <> '' then sch.source_id
+when o.gp_name is not null and o.gp_name <> '' then o.source_id
+when m.gp_name is not null and m.gp_name <> '' then m.source_id
+when mbpy.gp_name is not null and mbpy.gp_name <> '' then mbpy.source_id
+else null
+end as gp_name_src,
+
+coalesce (
+case when ebd."gpLGDCode" = '' then null else ebd."gpLGDCode" end,
+case when s.gp_code = '' then null else s.gp_code end,
+case when sch.gp_code = '' then null else sch.gp_code end,
+case when o.gp_code = '' then null else o.gp_code end,
+case when m.gp_code = '' then null else m.gp_code end,
+case when mbpy.gp_code = '' then null else mbpy.gp_code end
+)  as gp_code,
+
+case 
+when ebd."gpLGDCode" is not null and "gpLGDCode" <> '' then 0
+when s.gp_code is not null and s.gp_code <> '' then s.source_id
+when sch.gp_code is not null and sch.gp_code <> '' then sch.source_id
+when o.gp_code is not null and o.gp_code <> '' then o.source_id
+when m.gp_code is not null and m.gp_code <> '' then m.source_id
+when mbpy.gp_code is not null and mbpy.gp_code <> '' then mbpy.source_id
+else null
+end as gp_code_src,
+
+coalesce (
+case when ebd."blockName" = '' then null else ebd."blockName" end,
+case when s.block_name = '' then null else s.block_name end,
+case when sch.block_name = '' then null else sch.block_name end,
+case when o.block_name = '' then null else o.block_name end,
+case when m.block_name = '' then null else m.block_name end,
+case when mbpy.block_name = '' then null else mbpy.block_name end
+) as block_name,
+
+case 
+when ebd."blockName" is not null and ebd."blockName" <> '' then 0
+when s.block_name is not null and s.block_name <> '' then s.source_id
+when sch.block_name is not null and sch.block_name <> '' then sch.source_id
+when o.block_name is not null and o.block_name <> '' then o.source_id
+when m.block_name is not null and m.block_name <> '' then m.source_id
+when mbpy.block_name is not null and mbpy.block_name <> '' then mbpy.source_id
+else null
+end as block_name_src,
+
+coalesce (
+case when ebd."blockLGDCode" = '' then null else ebd."blockLGDCode" end,
+case when s.block_code = '' then null else s.block_code end,
+case when sch.block_code = '' then null else sch.block_code end,
+case when o.block_code = '' then null else o.block_code end,
+case when m.block_code = '' then null else m.block_code end,
+case when mbpy.block_code = '' then null else mbpy.block_code end
+) as block_code,
+
+case 
+when ebd."blockLGDCode" is not null and ebd."blockLGDCode" <> '' then 0
+when s.block_code is not null and s.block_code <> '' then s.source_id
+when sch.block_code is not null and sch.block_code <> '' then sch.source_id
+when o.block_code is not null and o.block_code <> '' then o.source_id
+when m.block_code is not null and m.block_code <> '' then m.source_id
+when mbpy.block_code is not null and mbpy.block_code <> '' then mbpy.source_id
+else null
+end as block_code_src,
+
+coalesce(
+case when ebd."districtName" = '' then null else ebd."districtName" end,
+case when s.district_name = '' then null else s.district_name end,
+case when m.district_name = '' then null else m.district_name end,
+case when sch.district_name = '' then null else sch.district_name end,
+case when o.district_name = '' then null else o.district_name end,
+case when mbpy.district_name = '' then null else mbpy.district_name end
+) as district_name,
+
+case 
+when ebd."districtName" is not null and ebd."districtName" <> '' then 0 
+when s.district_name is not null and s.district_name <> '' then s.source_id
+when m.district_name is not null and m.district_name <> '' then m.source_id
+when sch.district_name is not null and sch.district_name <> '' then sch.source_id
+when o.district_name is not null and o.district_name <> '' then o.source_id
+when mbpy.district_name is not null and mbpy.district_name <> '' then mbpy.source_id
+else null
+end as district_name_src,
+
+
+coalesce(
+case when ebd."districtLGDCode" = '' then null else ebd."districtLGDCode" end,
+case when s.district_code = '' then null else s.district_code end,
+case when m.district_code = '' then null else m.district_code end,
+case when sch.district_code = '' then null else sch.district_code end,
+case when o.district_code = '' then null else o.district_code end,
+case when mbpy.district_code = '' then null else mbpy.district_code end
+) as district_code,
+
+case 
+when ebd."districtLGDCode" is not null and ebd."districtLGDCode" <> '' then 0 
+when s.district_code is not null and s.district_code <> '' then s.source_id
+when m.district_code is not null and m.district_code <> '' then m.source_id
+when sch.district_code is not null and sch.district_code <> '' then sch.source_id
+when o.district_code is not null and o.district_code <> '' then o.source_id
+when mbpy.district_code is not null and mbpy.district_code <> '' then mbpy.source_id
+else null
+end as district_code_src,
+
+coalesce (
+case when ebd."villageName" = '' or ebd."villageName" = 'NA' then null else ebd."villageName" end,
+case when s.village_name = '' or s.village_name = 'NA' then null else s.village_name end,
+case when o.village_name = '' or o.village_name = 'NA' then null else o.village_name end,
+case when m.village_name = '' or m.village_name = 'NA' then null else m.village_name end,
+case when mbpy.village_name = '' or mbpy.village_name = 'NA' then null else mbpy.village_name end
+) as village_name,
+
+case 
+when ebd."villageName" is not null and ebd."villageName" <> '' and ebd."villageName" <> 'NA' then 0
+when s.village_name is not null and s.village_Name <> '' and s.village_Name <> 'NA' then s.source_id
+when o.village_name is not null and o.village_Name <> '' and o.village_Name <> 'NA' then o.source_id
+when m.village_name is not null and m.village_Name <> '' and m.village_Name <> 'NA' then m.source_id
+when mbpy.village_name is not null and mbpy.village_Name <> '' and mbpy.village_Name <> 'NA' then mbpy.source_id
+else null
+end as village_name_src,
+
+
+coalesce (
+case when ebd."villageLGDCode" = '' or ebd."villageLGDCode" = 'NA' then null else ebd."villageLGDCode" end,
+case when s.village_lgd = '' or s.village_lgd = 'NA' then null else s.village_lgd end,
+case when o.village_lgd = '' or o.village_lgd = 'NA' then null else o.village_lgd end,
+case when m.village_lgd = '' or m.village_lgd = 'NA' then null else m.village_lgd end,
+case when mbpy.village_lgd = '' or mbpy.village_lgd = 'NA' then null else mbpy.village_lgd end
+) as village_lgd,
+
+case 
+when ebd."villageLGDCode" is not null and ebd."villageLGDCode" <> '' and ebd."villageLGDCode" <> 'NA' then 0
+when s.village_lgd is not null and s.village_lgd <> '' and s.village_lgd <> 'NA' then s.source_id
+when o.village_lgd is not null and o.village_lgd <> '' and o.village_lgd <> 'NA' then o.source_id
+when m.village_lgd is not null and m.village_lgd <> '' and m.village_lgd <> 'NA' then m.source_id
+when mbpy.village_lgd is not null and mbpy.village_lgd <> '' and mbpy.village_lgd <> 'NA' then mbpy.source_id
+else null
+end as village_lgd_src,
+
+
+coalesce(
+case when sams.pin_code = '' then null else sams.pin_code end,
+case when sch.pin_code = '' then null else sch.pin_code end
+) as pin_code,
+
+case 
+when sams.pin_code is not null and sams.pin_code <> '' then sams.source_id
+when sch.pin_code is not null and sch.pin_code <> '' then sch.source_id
+else null
+end as pin_code_src,
+
+case 
+when LENGTH(TRIM(m.primary_mobile_number))=10 and isnumeric(TRIM(m.primary_mobile_number)) then TRIM(m.primary_mobile_number)
+when LENGTH(TRIM(bsky.primary_mobile_number))=10 and isnumeric(TRIM(bsky.primary_mobile_number)) then TRIM(bsky.primary_mobile_number)
+when LENGTH(TRIM(s.primary_mobile_number))=10 and isnumeric(TRIM(s.primary_mobile_number)) then TRIM(s.primary_mobile_number)
+when LENGTH(TRIM(o.primary_mobile_number))=10 and isnumeric(TRIM(o.primary_mobile_number)) then TRIM(o.primary_mobile_number) 
+when LENGTH(TRIM(mbpy.primary_mobile_number))=10 and isnumeric(TRIM(mbpy.primary_mobile_number)) then TRIM(mbpy.primary_mobile_number)
+when LENGTH(TRIM(sams.primary_mobile_number))=10 and isnumeric(TRIM(sams.primary_mobile_number)) then TRIM(sams.primary_mobile_number)
+when LENGTH(TRIM(sch.primary_mobile_number))=10 and isnumeric(TRIM(sch.primary_mobile_number)) then TRIM(sch.primary_mobile_number)
+else null 
+end as primary_mobile_number,
+
+case 
+when LENGTH(TRIM(m.primary_mobile_number))=10 and isnumeric(TRIM(m.primary_mobile_number)) then m.source_id
+when LENGTH(TRIM(bsky.primary_mobile_number))=10 and isnumeric(TRIM(bsky.primary_mobile_number)) then bsky.source_id
+when LENGTH(TRIM(s.primary_mobile_number))=10 and isnumeric(TRIM(s.primary_mobile_number)) then s.source_id
+when LENGTH(TRIM(o.primary_mobile_number))=10 and isnumeric(TRIM(o.primary_mobile_number)) then o.source_id
+when LENGTH(TRIM(mbpy.primary_mobile_number))=10 and isnumeric(TRIM(mbpy.primary_mobile_number)) then mbpy.source_id
+when LENGTH(TRIM(sams.primary_mobile_number))=10 and isnumeric(TRIM(sams.primary_mobile_number)) then sams.source_id
+when LENGTH(TRIM(sch.primary_mobile_number))=10 and isnumeric(TRIM(sch.primary_mobile_number)) then sch.source_id
+else null
+end as primary_mobile_number_src,
+
+case when sams.primary_source_of_livelihood = '' then null else sams.primary_source_of_livelihood end
+as primary_source_of_livelihood,
+
+case when sams.primary_source_of_livelihood is not null and sams.primary_source_of_livelihood <>'' then sams.source_id
+else null 
+end as primary_source_of_livelihood_src,
+
+
+case when sams.primary_source_of_livelihood_timestamp = '' then null else sams.primary_source_of_livelihood_timestamp end
+as primary_source_of_livelihood_timestamp,
+
+case when sams.primary_source_of_livelihood_timestamp is not null and sams.primary_source_of_livelihood_timestamp <>'' then sams.source_id
+else null 
+end as primary_source_of_livelihood_timestamp_src,
+
+coalesce (
+case when m.disability_status = '' then null else m.disability_status end,
+case when mbpy.disability_status = '' then null else mbpy.disability_status end,
+case when sams.disability_status = '' then null else sams.disability_status end
+--case when ebd."isDisable" = '' or ebd."isDisable" is null then null else (case when ebd."isDisable" = 'Y' then 'true' when ebd."isDisable" = 'N' then 'false' else null end) end
+) as disability_status,
+
+case 
+when m.disability_status is not null and m.disability_status <> '' then m.source_id
+when mbpy.disability_status is not null and mbpy.disability_status <> '' then mbpy.source_id
+when sams.disability_status is not null and sams.disability_status <> '' then sams.source_id
+--when ebd."isDisable" is not null or ebd."isDisable" <> '' then 0
+else null
+end as disability_status_src,
+
+coalesce(
+case when m.marital_status = '' then null else m.marital_status end,
+case when mbpy.marital_status = '' then null else mbpy.marital_status end,
+case when sch.marital_status = '' then null else sch.marital_status end
+)
+as marital_status,
+
+case 
+when m.marital_status is not null and m.marital_status <> '' then m.source_id
+when mbpy.marital_status is not null and mbpy.marital_status <> '' then mbpy.source_id
+when sch.marital_status is not null and sch.marital_status <> '' then sch.source_id
+else null
+end as marital_status_src,
+
+coalesce(
+case when sch.educational_qualification = '' then null else sch.educational_qualification end,
+case when sams.educational_qualification = '' then null else sams.educational_qualification end
+)
+as educational_qualification,
+
+case 
+when sch.educational_qualification is not null and sch.educational_qualification <> '' then sch.source_id
+when sams.educational_qualification is not null and sams.educational_qualification <> '' then sams.source_id
+else null
+end as educational_qualification_src,
+
+coalesce (
+case when ebd."numberOfMemberInFamily" = '' then null else ebd."numberOfMemberInFamily" end,
+case when s.number_of_members_in_family = '' then null else s.number_of_members_in_family end) as number_of_members_in_family,
+
+case 
+when ebd."numberOfMemberInFamily" is not null or ebd."numberOfMemberInFamily" <> '' then 0
+when s.number_of_members_in_family is not null or s.number_of_members_in_family <> '' then s.source_id
+else null
+end as number_of_members_in_family_src,
+
+coalesce(
+case when s.annual_income_from_all_sources = '' then null else s.annual_income_from_all_sources end,
+case when sch.annual_income_from_all_sources = '' then null else sch.annual_income_from_all_sources end,
+case when sams.annual_income_from_all_sources = '' then null else sams.annual_income_from_all_sources end
+) 
+as annual_income_from_all_sources,
+
+case 
+when s.annual_income_from_all_sources is not null or s.annual_income_from_all_sources <> '' then s.source_id
+when sch.annual_income_from_all_sources is not null or sch.annual_income_from_all_sources <> '' then sch.source_id
+when sams.annual_income_from_all_sources is not null or sams.annual_income_from_all_sources <> '' then sams.source_id
+else null 
+end as annual_income_from_all_sources_src,
+
+case when s.income_group = '' then null else s.income_group end
+as income_group,
+
+case when s.income_group is not null and s.income_group <>'' then sams.source_id
+else null 
+end as income_group_src,
+
+null as land_holding,
+cast(null as int) as land_holding_src,
+
+current_timestamp as inserted_ts,
+
+cast(null as timestamp) as updated_ts
+--select count(1) --8482956
+from
+(select * from 
+(
+select row_number() over (partition by "aadhaarVaultReference" order by id desc) as rn, * from public.external_beneficiary_detail
+) where rn = 1)ebd
+full outer join
+(SELECT * FROM public.base_tribal_fields WHERE source_id = 1)s on ebd."aadhaarVaultReference"  = s.aadhaar_number --9080163
+full outer join
+(SELECT * FROM public.base_tribal_fields WHERE source_id = 2)m ON coalesce(ebd."aadhaarVaultReference",s.aadhaar_number)  = m.aadhaar_number --9318053
+full outer join
+(SELECT * FROM public.base_tribal_fields WHERE source_id = 3)o ON coalesce(ebd."aadhaarVaultReference",s.aadhaar_number,m.aadhaar_number)  = o.aadhaar_number --9349687
+full outer join
+(SELECT * FROM public.base_tribal_fields WHERE source_id = 5)mbpy ON coalesce(ebd."aadhaarVaultReference",s.aadhaar_number,m.aadhaar_number,o.aadhaar_number)  = mbpy.aadhaar_number--9389603
+full outer join
+(SELECT * FROM public.base_tribal_fields WHERE source_id = 7)sams ON coalesce(ebd."aadhaarVaultReference",s.aadhaar_number,m.aadhaar_number,o.aadhaar_number,mbpy.aadhaar_number)  = sams.aadhaar_number--9389603
+full outer join
+(SELECT * FROM public.base_tribal_fields WHERE source_id = 4)bsky ON coalesce(ebd."aadhaarVaultReference",s.aadhaar_number,m.aadhaar_number,o.aadhaar_number,mbpy.aadhaar_number,sams.aadhaar_number) = bsky.aadhaar_number--9389603
+full outer join
+(SELECT * FROM public.base_tribal_fields WHERE source_id = 6)sch ON coalesce(ebd."aadhaarVaultReference",s.aadhaar_number,m.aadhaar_number,o.aadhaar_number,mbpy.aadhaar_number,sams.aadhaar_number,bsky.aadhaar_number) = sch.aadhaar_number--9389603
+)saturation
+left join --9350516
+(select distinct replace("spdpVillageId",',','') as "spdpVillageId",
+UPPER(TRIM("villageName")) as "villageName",
+replace("gpCode",',','') as "gpCode",
+UPPER(TRIM("gpName")) as "gpName",
+replace("blockCode",',','') as "blockCode",
+UPPER(TRIM("blockName")) as "blockName",
+replace("districtCode",',','') as "districtCode",
+UPPER(TRIM("districtName")) as "districtName"
+from "VillageData" 
+where "spdpVillageId" is not null)vill 
+on vill."spdpVillageId" = saturation.village_lgd
+
+left join 
+(select replace("gpCode",',','') as "gpCode",UPPER(TRIM("gpName")) as "gpName" from
+(select row_number() over (partition by "gpCode" order by id) as rn, * from "VillageData")where rn = 1)gp 
+on gp."gpCode" = saturation.gp_code
+
+left join 
+(select replace("blockCode",',','') as "blockCode",UPPER(TRIM("blockName")) as "blockName" from
+(select row_number() over (partition by "blockCode" order by id) as rn, * from "VillageData")where rn = 1)block 
+on block."blockCode" = saturation.block_code
+
+left join 
+(select replace("districtCode",',','') as "districtCode",UPPER(TRIM("districtName")) as "districtName" from
+(select row_number() over (partition by "districtCode" order by id) as rn, * from "VillageData")where rn = 1)dist 
+on dist."districtCode" = saturation.district_code
+
+left join
+(select 
+distinct replace(a."spdpVillageId",',','') as "spdpVillageId",
+b."villageName"
+from "VillageData" a
+inner join
+(select count(1),"villageName" from
+(select distinct replace("spdpVillageId",',','') as "spdpVillageId",UPPER(TRIM("villageName")) as "villageName" 
+from "VillageData" )
+group by "villageName" having count(1) = 1) b
+on UPPER(TRIM(a."villageName")) = b."villageName") vill1
+	on 
+	vill1."villageName" = UPPER(TRIM(saturation.village_name))
+
+left join
+(select 
+distinct replace(a."gpCode",',','') as "gpCode",
+b."gpName"
+from "VillageData" a
+inner join
+(select count(1),"gpName" from
+(select distinct UPPER(TRIM("gpName")) as "gpName" , replace("gpCode",',','') as "gpCode"
+from "VillageData" )
+group by "gpName" having count(1) = 1) b
+on UPPER(TRIM(a."gpName")) = b."gpName")gp1
+	on gp1."gpName" = UPPER(TRIM(saturation.gp_name))
+
+left join
+(select 
+distinct replace(a."blockCode",',','') as "blockCode",
+b."blockName"
+from "VillageData" a
+inner join
+(select count(1),"blockName" from
+(select distinct UPPER(TRIM("blockName")) as "blockName" , replace("blockCode",',','') as "blockCode"
+from "VillageData" )
+group by "blockName" having count(1) = 1) b
+on UPPER(TRIM(a."blockName")) = b."blockName")block1
+	on block1."blockName" = UPPER(TRIM(saturation.block_name))
+	
+left join
+(select 
+distinct replace(a."districtCode",',','') as "districtCode",
+b."districtName"
+from "VillageData" a
+inner join
+(select count(1),"districtName" from
+(select distinct UPPER(TRIM("districtName")) as "districtName" ,replace("districtCode",',','') as "districtCode"
+from "VillageData" )
+group by "districtName" having count(1) = 1) b
+on UPPER(TRIM(a."districtName")) = b."districtName")dist1
+	on dist1."districtName" = UPPER(TRIM(saturation.district_name))
+where aadhaar_number is not null and aadhaar_number <> ''
+	

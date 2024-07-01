@@ -1,0 +1,169 @@
+------------------------------------------------------------------------------------------------------------------------------------
+---base_tribal_fields DDL----------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------------------
+
+-- public.base_tribal_fields definition
+
+-- Drop table
+
+-- DROP TABLE public.base_tribal_fields;
+
+CREATE TABLE if not EXISTS base_tribal_fields (
+	aadhaar_reference_number varchar(255) NOT NULL,
+	aadhaar_number varchar(255) NOT NULL,
+	rationcard_number varchar(255) NULL,
+	beneficiary_name varchar(255) NULL,
+	gender varchar(255) NULL,
+	date_of_birth varchar(255) NULL,
+	year_of_birth varchar(255) NULL,
+	social_category varchar(255) NULL,
+	tribe_name varchar(255) NULL,
+	pvtg_or_nonpvtg varchar(255) NULL,
+	address varchar(255) NULL,
+	gp_name varchar(255) NULL,
+	gp_code varchar(255) NULL,
+	block_name varchar(255) NULL,
+	block_code varchar(255) NULL,
+	district_name varchar(255) NULL,
+	district_code varchar(255) NULL,
+	village_name varchar(255) NULL,
+	village_lgd varchar(255) null,
+	pin_code varchar(255) null,
+	primary_mobile_number varchar(255) NULL,
+	primary_source_of_livelihood varchar(255) NULL,
+	primary_source_of_livelihood_timestamp varchar(255) NULL,
+	disability_status varchar(10) NULL,
+	marital_status varchar(10) NULL,
+	educational_qualification varchar(255) NULL,
+	number_of_members_in_family varchar(255) NULL,
+	annual_income_from_all_sources varchar(255) NULL,
+	income_group varchar(255) NULL,
+	land_holding varchar(255) NULL,
+	source_id int4 NOT NULL,
+	inserted_ts timestamp,
+	updated_ts timestamp,
+	CONSTRAINT base_tribal_fields_pkey PRIMARY KEY (aadhaar_number, source_id,aadhaar_reference_number)
+);
+
+
+------------------------------------------------------------------------------------------------------------------------------------
+---Final base_tribal_fields_saturated DDL----------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------------------
+-
+-- public.base_tribal_fields_saturated definition
+
+-- Drop table
+
+-- DROP TABLE public.base_tribal_fields_saturated;
+
+
+CREATE table if not exists base_tribal_fields_saturated (
+	aadhaar_reference_number varchar(255) NULL,
+	aadhaar_reference_number_src int4 NULL,
+	aadhaar_number varchar(255) NOT null primary KEY,
+	aadhaar_number_src int4 NULL,
+	rationcard_number varchar(255) NULL,
+	rationcard_number_src int4 NULL,
+	beneficiary_name varchar(255) NULL,
+	beneficiary_name_src int4 NULL,
+	gender varchar(255) NULL,
+	gender_src int4 NULL,
+	date_of_birth varchar(255) NULL,
+	date_of_birth_src int4 NULL,
+	year_of_birth varchar(255) NULL,
+	year_of_birth_src int4 NULL,
+	social_category varchar(255) NULL,
+	social_category_src int4 NULL,
+	tribe_name varchar(255) NULL,
+	tribe_name_src int4 NULL,
+	pvtg_or_nonpvtg varchar(255) NULL,
+	pvtg_or_nonpvtg_src int4 NULL,
+	address varchar(500) NULL,
+	address_src int4 NULL,
+	gp_name varchar(255) NULL,
+	gp_name_src int4 NULL,
+	gp_code varchar(255) NULL,
+	gp_code_src int4 NULL,
+	block_name varchar(255) NULL,
+	block_name_src int4 NULL,
+	block_code varchar(255) NULL,
+	block_code_src int4 NULL,
+	district_name varchar(255) NULL,
+	district_name_src int4 NULL,
+	district_code varchar(255) NULL,
+	district_code_src int4 NULL,
+	village_name varchar(255) NULL,
+	village_name_src int4 NULL,
+	village_lgd varchar(255) NULL,
+	village_lgd_src int4 NULL,
+	pin_code varchar(255) NULL,
+	pin_code_src int4 NULL,
+	primary_mobile_number varchar(255) NULL,
+	primary_mobile_number_src int4 NULL,
+	primary_source_of_livelihood varchar(255) NULL,
+	primary_source_of_livelihood_src int4 NULL,
+	primary_source_of_livelihood_timestamp varchar(255) NULL,
+	primary_source_of_livelihood_timestamp_src int4 NULL,
+	disability_status varchar(10) NULL,
+	disability_status_src int4 NULL,
+	marital_status varchar(10) NULL,
+	marital_status_src int4 NULL,
+	educational_qualification varchar(255) NULL,
+	educational_qualification_src int4 NULL,
+	number_of_members_in_family varchar(255) NULL,
+	number_of_members_in_family_src int4 NULL,
+	annual_income_from_all_sources varchar(255) NULL,
+	annual_income_from_all_sources_src int4 NULL,
+	income_group varchar(255) NULL,
+	income_group_src int4 NULL,
+	land_holding varchar(255) NULL,
+	land_holding_src int4 NULL,
+	inserted_ts timestamp NULL,
+	updated_ts timestamp NULL
+);
+------------------------------------------------------------------------------------------------------------------------------------
+---source master table to have the list of sources:----------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------------------
+
+-- public.source_master definition
+
+-- Drop table
+
+-- DROP TABLE public.source_master;
+
+CREATE TABLE if not exists source_master (
+	source_id int4 NOT NULL,
+	source_name varchar(500) NULL,
+	source_desc varchar(500) NULL,
+	is_active bool NULL,
+	created_date date NULL,
+	updated_date date NULL,
+	CONSTRAINT source_master_pkey PRIMARY KEY (source_id)
+);
+
+TRUNCATE TABLE source_master;
+
+INSERT INTO source_master(source_id, source_name, source_desc, is_active, created_date, updated_date) values ('1','PDS','PDS',TRUE,CURRENT_DATE, CURRENT_DATE);
+INSERT INTO source_master(source_id, source_name, source_desc, is_active, created_date, updated_date) values ('2','MAMATA','MAMATA',TRUE,CURRENT_DATE, CURRENT_DATE);
+INSERT INTO source_master(source_id, source_name, source_desc, is_active, created_date, updated_date) values ('3','OPELIP','OPELIP',TRUE,CURRENT_DATE, CURRENT_DATE);
+INSERT INTO source_master(source_id, source_name, source_desc, is_active, created_date, updated_date) values ('4','BSKY','BSKY',TRUE,CURRENT_DATE, CURRENT_DATE);
+INSERT INTO source_master(source_id, source_name, source_desc, is_active, created_date, updated_date) values ('5','MBPY','MBPY',TRUE,CURRENT_DATE, CURRENT_DATE);
+INSERT INTO source_master(source_id, source_name, source_desc, is_active, created_date, updated_date) values ('6','Scholarships','Scholarships',TRUE,CURRENT_DATE, CURRENT_DATE);
+INSERT INTO source_master(source_id, source_name, source_desc, is_active, created_date, updated_date) values ('7','SAMS','SAMS',TRUE,CURRENT_DATE, CURRENT_DATE);
+INSERT INTO source_master(source_id, source_name, source_desc, is_active, created_date, updated_date) values ('8','VillageData','Indirect source',TRUE,CURRENT_DATE, CURRENT_DATE);
+
+
+------------------------------------------------------------------------------------------------------------------------------------
+---Function to check is numeric value or not--------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION isnumeric(text) RETURNS BOOLEAN AS $$
+DECLARE x NUMERIC;
+BEGIN
+    x = $1::NUMERIC;
+    RETURN TRUE;
+EXCEPTION WHEN others THEN
+    RETURN FALSE;
+END;
+$$
+STRICT
+LANGUAGE plpgsql IMMUTABLE;
