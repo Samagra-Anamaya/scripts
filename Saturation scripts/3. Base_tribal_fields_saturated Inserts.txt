@@ -2,7 +2,7 @@
 ---Final table to load the tribal saturated fields:----------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------------------------------------------
 
-INSERT INTO public.base_tribal_fields_saturated
+INSERT INTO base_tribal_fields_saturated
 (aadhaar_reference_number, aadhaar_reference_number_src, aadhaar_number, aadhaar_number_src, rationcard_number, rationcard_number_src, beneficiary_name, beneficiary_name_src, gender, gender_src, date_of_birth, date_of_birth_src, year_of_birth, year_of_birth_src, social_category, social_category_src, tribe_name, tribe_name_src, pvtg_or_nonpvtg, pvtg_or_nonpvtg_src, address, address_src, gp_name, gp_name_src, gp_code, gp_code_src, block_name, block_name_src, block_code, block_code_src, district_name, district_name_src, district_code, district_code_src, village_name, village_name_src, village_lgd, village_lgd_src, pin_code, pin_code_src, primary_mobile_number, primary_mobile_number_src, primary_source_of_livelihood, primary_source_of_livelihood_src, primary_source_of_livelihood_timestamp, primary_source_of_livelihood_timestamp_src,disability_status, disability_status_src, marital_status, marital_status_src, educational_qualification, educational_qualification_src, number_of_members_in_family, number_of_members_in_family_src, annual_income_from_all_sources, annual_income_from_all_sources_src,income_group,income_group_src, land_holding, land_holding_src, inserted_ts, updated_ts)
 
 select aadhaar_reference_number, aadhaar_reference_number_src, aadhaar_number, aadhaar_number_src, rationcard_number, rationcard_number_src, beneficiary_name, beneficiary_name_src, gender, gender_src, date_of_birth, date_of_birth_src, year_of_birth, year_of_birth_src, COALESCE(social_category,'ST') AS social_category, COALESCE(social_category_src,aadhaar_number_src) AS social_category_src, tribe_name, tribe_name_src, pvtg_or_nonpvtg, pvtg_or_nonpvtg_src, address, address_src, 
@@ -482,22 +482,22 @@ cast(null as timestamp) as updated_ts
 from
 (select * from 
 (
-select row_number() over (partition by "aadhaarVaultReference" order by id desc) as rn, * from public.external_beneficiary_detail
+select row_number() over (partition by "aadhaarVaultReference" order by id desc) as rn, * from external_beneficiary_detail
 ) where rn = 1)ebd
 full outer join
-(SELECT * FROM public.base_tribal_fields WHERE source_id = 1)s on ebd."aadhaarVaultReference"  = s.aadhaar_number --9080163
+(SELECT * FROM base_tribal_fields WHERE source_id = 1)s on ebd."aadhaarVaultReference"  = s.aadhaar_number --9080163
 full outer join
-(SELECT * FROM public.base_tribal_fields WHERE source_id = 2)m ON coalesce(ebd."aadhaarVaultReference",s.aadhaar_number)  = m.aadhaar_number --9318053
+(SELECT * FROM base_tribal_fields WHERE source_id = 2)m ON coalesce(ebd."aadhaarVaultReference",s.aadhaar_number)  = m.aadhaar_number --9318053
 full outer join
-(SELECT * FROM public.base_tribal_fields WHERE source_id = 3)o ON coalesce(ebd."aadhaarVaultReference",s.aadhaar_number,m.aadhaar_number)  = o.aadhaar_number --9349687
+(SELECT * FROM base_tribal_fields WHERE source_id = 3)o ON coalesce(ebd."aadhaarVaultReference",s.aadhaar_number,m.aadhaar_number)  = o.aadhaar_number --9349687
 full outer join
-(SELECT * FROM public.base_tribal_fields WHERE source_id = 5)mbpy ON coalesce(ebd."aadhaarVaultReference",s.aadhaar_number,m.aadhaar_number,o.aadhaar_number)  = mbpy.aadhaar_number--9389603
+(SELECT * FROM base_tribal_fields WHERE source_id = 5)mbpy ON coalesce(ebd."aadhaarVaultReference",s.aadhaar_number,m.aadhaar_number,o.aadhaar_number)  = mbpy.aadhaar_number--9389603
 full outer join
-(SELECT * FROM public.base_tribal_fields WHERE source_id = 7)sams ON coalesce(ebd."aadhaarVaultReference",s.aadhaar_number,m.aadhaar_number,o.aadhaar_number,mbpy.aadhaar_number)  = sams.aadhaar_number--9389603
+(SELECT * FROM base_tribal_fields WHERE source_id = 7)sams ON coalesce(ebd."aadhaarVaultReference",s.aadhaar_number,m.aadhaar_number,o.aadhaar_number,mbpy.aadhaar_number)  = sams.aadhaar_number--9389603
 full outer join
-(SELECT * FROM public.base_tribal_fields WHERE source_id = 4)bsky ON coalesce(ebd."aadhaarVaultReference",s.aadhaar_number,m.aadhaar_number,o.aadhaar_number,mbpy.aadhaar_number,sams.aadhaar_number) = bsky.aadhaar_number--9389603
+(SELECT * FROM base_tribal_fields WHERE source_id = 4)bsky ON coalesce(ebd."aadhaarVaultReference",s.aadhaar_number,m.aadhaar_number,o.aadhaar_number,mbpy.aadhaar_number,sams.aadhaar_number) = bsky.aadhaar_number--9389603
 full outer join
-(SELECT * FROM public.base_tribal_fields WHERE source_id = 6)sch ON coalesce(ebd."aadhaarVaultReference",s.aadhaar_number,m.aadhaar_number,o.aadhaar_number,mbpy.aadhaar_number,sams.aadhaar_number,bsky.aadhaar_number) = sch.aadhaar_number--9389603
+(SELECT * FROM base_tribal_fields WHERE source_id = 6)sch ON coalesce(ebd."aadhaarVaultReference",s.aadhaar_number,m.aadhaar_number,o.aadhaar_number,mbpy.aadhaar_number,sams.aadhaar_number,bsky.aadhaar_number) = sch.aadhaar_number--9389603
 )saturation
 left join --9350516
 (select distinct replace("spdpVillageId",',','') as "spdpVillageId",
