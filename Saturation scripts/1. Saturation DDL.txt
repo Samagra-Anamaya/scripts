@@ -49,7 +49,6 @@ CREATE TABLE if not EXISTS base_tribal_fields (
 ------------------------------------------------------------------------------------------------------------------------------------
 ---Final base_tribal_fields_saturated DDL----------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------------------------------------------
--
 -- public.base_tribal_fields_saturated definition
 
 -- Drop table
@@ -151,7 +150,6 @@ INSERT INTO source_master(source_id, source_name, source_desc, is_active, create
 INSERT INTO source_master(source_id, source_name, source_desc, is_active, created_date, updated_date) values ('6','Scholarships','Scholarships',TRUE,CURRENT_DATE, CURRENT_DATE);
 INSERT INTO source_master(source_id, source_name, source_desc, is_active, created_date, updated_date) values ('7','SAMS','SAMS',TRUE,CURRENT_DATE, CURRENT_DATE);
 INSERT INTO source_master(source_id, source_name, source_desc, is_active, created_date, updated_date) values ('8','VillageData','Indirect source',TRUE,CURRENT_DATE, CURRENT_DATE);
-
 
 ------------------------------------------------------------------------------------------------------------------------------------
 ---Function to check is numeric value or not--------------------------------------------------------------------------------------------
