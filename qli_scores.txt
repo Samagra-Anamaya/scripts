@@ -1,0 +1,486 @@
+--------------------------------------------------------------------------------------------------------------------------------------------
+--QLI SCRIPTS
+--------------------------------------------------------------------------------------------------------------------------------------------
+create table qli_scores
+as
+with
+------------------------------------------------
+--BASE table:
+------------------------------------------------
+	--removing duplicates from base table (beneficiary table)
+	cte_beneficiary as
+	(
+	select * from 
+	(
+	select row_number () over(partition by "aadhaarVaultReference" order by id desc) as rn,
+	"aadhaarVaultReference",
+	"rationCardNumber",
+	"dateOfBirth","isDisable","gpLGDCode","villageLGDCode"
+	
+	from external_beneficiary_detail ebd 
+	where "aadhaarVaultReference" <> '' and "aadhaarVaultReference" is not null 
+	 )res
+	where rn = 1 and "rationCardNumber" is not null and "rationCardNumber" <> ''
+	--limit 1000
+	)
+	,
+	cte_rationcard_numbers as 
+	(
+	select distinct "rationCardNumber" from cte_beneficiary
+	),
+------------------------------------------------
+--1. Basic Ameneties (Access to Drinking Water)
+------------------------------------------------
+	cte_access_to_drinking_water_avail as
+	(
+	select distinct "rationCardNumber" from
+		(
+		select
+		(house_connection_provided::decimal/(case when no_of_households is null or no_of_households = '0' or no_of_households = '' then '1' else no_of_households end)::decimal)*100 as hhcpercent
+		,ben."rationCardNumber"
+		from undefinedjjm_village_mapping uvm
+		inner join 
+		(select distinct "villageLGDCode","rationCardNumber" from cte_beneficiary ben 
+			where "villageLGDCode" is not null and "villageLGDCode" <> ''
+			) ben  on uvm.lgdvillageid = ben."villageLGDCode"
+		)where hhcpercent >= 80
+	),
+------------------------------------------------
+--2. Livelihood & Income (Pension Support)
+------------------------------------------------
+
+	-- pension eligible criteria
+	cte_mbpy_eligible as 
+	(
+	select distinct eb."rationCardNumber"
+	FROM
+	    cte_beneficiary eb
+	INNER JOIN
+	    undefinedmbpy_application_new mbpy
+	    ON eb."aadhaarVaultReference" = mbpy."aadhar_number"
+	WHERE
+	    --AND 
+	    mbpy."aadhar_number" IS NOT NULL AND mbpy."aadhar_number" <> '' 
+	    AND mbpy."sanction_date" IS NOT NULL AND mbpy."sanction_date" <> ''
+	   AND eb."dateOfBirth" IS NOT NULL AND eb."dateOfBirth" <> ''
+	--   AND EXTRACT(YEAR FROM to_date(case when isnumeric(replace(replace(mbpy."sanction_date",'/',''),'-','')) then mbpy."sanction_date" else null end,'dd-mm-yyyy')) IN (2019, 2020, 2021, 2022, 2023)
+	    AND (
+--	       extract(year from AGE(to_date(case when isnumeric(replace(replace(mbpy."sanction_date",'/',''),'-','')) then mbpy."sanction_date" else null end,'dd/mm/yyyy'), to_date(case when isnumeric(replace(replace(eb."dateOfBirth",'/',''),'-','')) then eb."dateOfBirth" else null end,'dd/mm/yyyy')))::int >= 60
+	--        OR 
+	        LOWER(eb."isDisable") = 'y'
+	        OR mbpy."mbpy_scheme_id"::int IN (3, 4, 6)
+	    )
+	
+	),
+	
+	--pension availed members
+	cte_mbpy_availed as
+	(
+	SELECT
+	    distinct "rationCardNumber"
+	FROM
+	    cte_beneficiary  ben
+	INNER JOIN
+	    undefinedmbpy_application_new mbpy
+	    ON ben."aadhaarVaultReference" = mbpy."aadhar_number"
+	WHERE
+	    ben."rationCardNumber" IS NOT NULL AND ben."rationCardNumber" <> ''
+	    AND ben."aadhaarVaultReference" IS NOT NULL AND ben."aadhaarVaultReference" <> '' 
+	    AND mbpy."aadhar_number" IS NOT NULL AND mbpy."aadhar_number" <> '' 
+	    AND mbpy."sanction_date" IS NOT NULL AND mbpy."sanction_date" <> ''
+	    AND EXTRACT(YEAR FROM mbpy."sanction_date"::date) IN (2019, 2020, 2021, 2022, 2023)
+	    AND mbpy."mbpy_scheme_id"::int IN (1, 3, 4, 6)
+	),
+	
+------------------------------------------------
+--3.Livelihood & Income (Land Titles)
+------------------------------------------------
+	cte_land_titles_mjjy_eligible
+	as
+	(
+	select distinct ben."rationCardNumber" 
+	from cte_beneficiary  ben
+	inner join "fra_forest_gps_20240827133601" forest on ben."gpLGDCode" = replace(forest.gp_code,',','')
+	),
+	cte_land_titles_mjjy_avail
+	as
+	(
+	select distinct pmb.rationCardNumber 
+	from undefinedproxy_matched_beneficiaries_v2 pmb 
+	where matching_criteria = '3a'
+	),		
+	
+------------------------------------------------
+--4.1	Health (Maternal Health Benefit)
+------------------------------------------------
+	--eligible criteria for mamata and removing duplicates
+	cte_mamata_eligible as 
+	(
+	select distinct ben."rationCardNumber" from
+	(
+	select *
+	from (
+	select row_number() over (partition by aadhar_no order by id desc) as rn,* 
+	from undefinedmamata where 
+	    cast(age as int) >= 19 and is_late_reg='false' and husband_work_gov='false' and  
+	    (pvtg_or_not='true' or (pvtg_or_not='false' and cast(no_of_live_birth as int) <=1))
+	)res
+	where res.rn = 1
+	)mamata 
+	inner join cte_beneficiary ben on mamata.aadhar_no = ben."aadhaarVaultReference"
+	),
+	
+	--scoring for mamata and removing duplicates
+	cte_mamata_availed as 
+	(
+	select distinct ben."rationCardNumber" from
+	(
+	select *
+	from (
+	select row_number() over (partition by aadhar_no order by id desc) as rn,* 
+	from undefinedmamata
+	where 
+	                cast(age as int) >= 19
+	                AND is_late_reg='false' AND husband_work_gov='false'
+	                AND (pvtg_or_not='true' or (pvtg_or_not='false' and cast(no_of_live_birth as int) <=1)
+	                )
+	                AND status is NOT NULL  and status <> '' and LOWER(status) NOT IN  ('miscarriage', 'still birth', 'infant death', 'maternal death')
+	                AND date_of_delivery != '' AND snd_instl_paid_date != '' AND fst_instl_paid_date != ''
+	                AND (  
+	                        (date_of_delivery IS NOT NULL and snd_instl_paid_date IS NOT NULL and (DATE_PART('day',  snd_instl_paid_date::date) -  DATE_PART('day', date_of_delivery::date)) < 365) or
+	                        (date_of_delivery IS NULL and fst_instl_paid_date IS NOT NULL and (DATE_PART('day',  fst_instl_paid_date::date) -  DATE_PART('day', date_of_delivery::date)) < 365)
+	                
+	
+	)
+	)res
+	where res.rn = 1
+	)mamata 
+	inner join cte_beneficiary ben on mamata.aadhar_no = ben."aadhaarVaultReference"
+	
+	),
+------------------------------------------------
+--4.2	Health (Health Insurance)
+------------------------------------------------
+	--health BSKY removing duplicates
+	cte_bsky as
+	(
+	select distinct ben."rationCardNumber" from 
+	(
+	select * from 
+	(
+	select cast("scheme_data" as jsonb)->>'rationCardNo' as "rationCardNumber", scheme_code,
+	row_number () over (partition by cast("scheme_data" as jsonb)->>'rationCardNo'  order by id desc) as rn from 
+	scheme_transaction 
+	where 
+	TRIM(UPPER(scheme_code)) = 'BSKY'
+	--cast("scheme_data" as jsonb)->>'rationCardNo' as rationcard_number,
+	)res where res.rn = 1
+	)bsky
+	inner join cte_rationcard_numbers ben on bsky."rationCardNumber" = ben."rationCardNumber"
+	),
+	
+------------------------------------------------
+--5. Health	(Access to SHC)
+------------------------------------------------	
+		--access_to_shc_eligible : all rationcards/aadhaars are eligible
+	
+	--access_to_shc_avail
+	cte_access_to_shc_avail 
+	as 
+	(
+	select distinct ben."rationCardNumber" from
+	cte_beneficiary ben
+	inner join 
+	(select count(own_shc),gp_code from "public"."undefinedshc_final"
+	where gp_code <> '0' and own_shc = 'Yes'
+	group by gp_code)shc on shc.gp_code = ben."gpLGDCode"
+	
+	),
+------------------------------------------------
+--6	Nutrition	Food Security
+------------------------------------------------
+	--sfss(PDS) removing duplicates
+	cte_sfss as
+	(
+	select distinct rationcard_number from
+	(
+	select * from 
+	(
+	select row_number () over (partition by aadhaar_number order by id) as rn,* 
+	from 
+	undefinedsfssmemberdatashare sfss
+	where aadhaar_number is not null or aadhaar_number <> ''
+	)res where res.rn = 1
+	)sfss
+	inner join cte_beneficiary ben on sfss.aadhaar_number = ben."aadhaarVaultReference"
+	),
+	
+	--nfsa(PDS) removing duplicates
+	cte_nfsa as
+	(
+	select distinct rationcard_number from
+	(
+	select * from 
+	(
+	select row_number () over (partition by aadhaar_number order by id) as rn,* 
+	from 
+	undefinednfsamemberdatashare nfsa
+	where aadhaar_number is not null or aadhaar_number <> ''
+	)res where res.rn = 1
+	)nfsa
+	inner join cte_beneficiary ben on nfsa.aadhaar_number = ben."aadhaarVaultReference"
+	),	
+------------------------------------------------
+--7	Nutrition	Access to AWC
+------------------------------------------------
+	cte_access_to_awc_avail as 
+	(
+	
+	select distinct "rationCardNumber"
+	from
+	(
+	SELECT 
+	        replace(vd."spdpVillageId",',','') AS village_code,
+	        vd."villageName" AS village_name,
+	        vd."districtName" AS district_name,
+	        vd."blockName" AS block_name,
+	        uc."village_lgd"
+	        --select *
+	    FROM 
+	        "VillageData" vd
+	    LEFT JOIN 
+	        undefinedanganwadi_centres uc
+	        ON uc."village_lgd"::integer = replace(vd."spdpVillageId",',','')::integer
+	    WHERE
+	        LOWER(vd."isTspBlock") = 'y'
+	 )awc 
+	 inner join cte_beneficiary ben on awc.village_code = ben."villageLGDCode"
+	),
+
+------------------------------------------------	
+--8	Education & Skill Development	Scholarship
+------------------------------------------------
+	cte_scholarship_eligible 
+	as
+	(
+	select distinct "rationCardNumber"
+	from cte_beneficiary ben
+/*	where 
+	(DATE '2021-04-01' - CAST(NULLIF(ben."dateOfBirth", '') AS DATE) >= INTERVAL '15 years' AND
+	 	DATE '2021-04-01' - CAST(NULLIF(ben."dateOfBirth", '') AS DATE) < INTERVAL '25 years') 
+	 OR
+	(DATE '2022-04-01' - CAST(NULLIF(ben."dateOfBirth", '') AS DATE) >= INTERVAL '15 years' AND
+	   	DATE '2022-04-01' - CAST(NULLIF(ben."dateOfBirth", '') AS DATE) < INTERVAL '25 years')
+*/	
+	--select case when DATE '2022-04-01' - CAST(NULLIF(ben."dateOfBirth", '') AS DATE) > INTERVAL '15 YEARS' then 1 END from external_beneficiary_detail BEN limit 10
+	   	
+	),
+	cte_scholarship_avail
+	as
+	(
+	SELECT
+	        distinct ben."rationCardNumber"
+	    FROM 
+	        cte_beneficiary ben
+	        inner join 
+	        (select REPLACE(REPLACE(post."aadhaar_no", '"', ''), '''', '') as aadhaar_number 
+	        from external_post_matric_scholarship post where post."academic_year" IN ('2021-22', '2022-23')
+	        union all
+	        select REPLACE(REPLACE(pre."aadhaar_no", '"', ''), '''', '') as aadhaar_number 
+	        from external_pre_matric_scholarship pre where pre."academic_year" IN ('2021-22', '2022-23')
+	        )scholarship
+	        on ben."aadhaarVaultReference" = scholarship.aadhaar_number
+	 ),
+------------------------------------------------
+--9	Education & Skill Development	Higher Education Enrolment
+------------------------------------------------
+
+
+	cte_sams_eligible AS
+	(
+	SELECT DISTINCT ebd."rationCardNumber" 
+	FROM cte_beneficiary ebd
+	WHERE 
+	    ebd."dateOfBirth" <> '' 
+	    AND (DATE_PART('year', CURRENT_DATE) - DATE_PART('year', CAST(ebd."dateOfBirth" AS DATE))) BETWEEN 17 AND 30
+	),
+	
+	cte_sams_avail as
+	(
+	select DISTINCT ben."rationCardNumber" from 
+	
+	(
+	select * from
+	(
+	select st.*, ben."aadhaarVaultReference" as aadhaar_number,row_number () over (partition by ben."aadhaarVaultReference" order by st.id desc) as rn from 
+	
+	(select *,
+	TRIM(cast(replace(cast("scheme_data" as varchar),'\','\\') as jsonb)->>'hashed_aadhar') as hashed_aadhar
+	from scheme_transaction where TRIM(UPPER(scheme_code)) ='SAMS1') st
+	inner join 
+	(select distinct "aadhaarVaultReference" from cte_beneficiary) ben
+	on st.hashed_aadhar = concat('0x',UPPER(encode(sha256(ben."aadhaarVaultReference"::bytea), 'hex')))
+	--cast("scheme_data" as jsonb)->>'rationCardNo' as rationcard_number,
+	)res where res.rn = 1
+	)sams
+	inner join cte_beneficiary ben on ben."aadhaarVaultReference" = sams.aadhaar_number
+	)
+	
+------------------------------------------------
+
+
+
+/*
+--scholarship dedupe
+cte_scholarship as
+(
+select * from 
+(
+select *,row_number () over (partition by cast(scheme_data as jsonb)->>'rationCardNo'  order by id desc) as rn from 
+scheme_transaction 
+where 
+TRIM(UPPER(scheme_code)) in ('POSTMAT','PREMAT910')
+--cast("scheme_data" as jsonb)->>'rationCardNo' as rationcard_number,
+)res where res.rn = 1
+),
+
+cte_bsky as
+
+*/
+
+
+select  
+rationcard_number,
+
+access_to_drinking_water_eligible,
+access_to_drinking_water_avail,
+case when access_to_drinking_water_eligible = 1 and access_to_drinking_water_avail = 0 then 0 else 1 end as access_to_drinking_water_qli,
+
+pension_support_eligible, 
+pension_support_avail, 
+case when pension_support_eligible = 1 and pension_support_avail = 0 then 0 else 1 end as pension_support_qli,
+
+land_titles_eligible,
+land_titles_avail,
+case when land_titles_eligible = 1 and land_titles_avail = 0 then 0 else 1 end as land_titles_qli,
+
+maternal_health_benefit_eligible,
+maternal_health_benefit_avail,
+case when maternal_health_benefit_eligible = 1 and maternal_health_benefit_avail = 0 then 0 else 1 end as maternal_health_benefit_qli,
+
+health_insurance_eligible,
+health_insurance_avail,
+case when health_insurance_eligible = 1 and health_insurance_avail = 0 then 0 else 1 end  AS health_insurance_qli,
+
+access_to_shc_eligible,
+access_to_shc_avail,
+case when access_to_shc_eligible = 1 and access_to_shc_avail = 0 then 0 else 1 end AS access_to_shc_qli,
+
+food_security_eligible,
+food_security_avail,
+case when food_security_eligible = 1 and food_security_avail = 0 then 0 else 1 end AS food_security_qli,
+
+access_to_awc_eligible,
+access_to_awc_avail,
+case when access_to_awc_eligible = 1 and access_to_awc_avail = 0 then 0 else 1 end AS access_to_awc_qli,
+
+scholarship_eligible,
+scholarship_avail,
+case when scholarship_eligible = 1 and scholarship_avail = 0 then 0 else 1 end AS scholarship_qli,
+
+higher_education_enrolment_eligible,
+higher_education_enrolment_avail,
+case when higher_education_enrolment_eligible = 1 and higher_education_enrolment_avail = 0 then 0 else 1 end AS higher_education_enrolment_qli,
+
+(access_to_drinking_water_eligible + pension_support_eligible + land_titles_eligible + 
+maternal_health_benefit_eligible + health_insurance_eligible + access_to_shc_eligible + food_security_eligible + 
+access_to_awc_eligible + scholarship_eligible + higher_education_enrolment_eligible) as total_eligible_score, 
+(access_to_drinking_water_avail + pension_support_avail + land_titles_avail + 
+maternal_health_benefit_avail + health_insurance_avail + access_to_shc_avail + food_security_avail + 
+access_to_awc_avail + scholarship_avail + higher_education_enrolment_avail) as total_avail_score 
+from
+(
+	
+select 
+--count(1) from
+
+ben."rationCardNumber" as rationcard_number,
+
+case when ben."rationCardNumber" is not null and ben."rationCardNumber" <> '' then 1 else 0 end AS access_to_drinking_water_eligible,
+case when drinking_water_avail."rationCardNumber" is not null then 1 else 0 end AS access_to_drinking_water_avail,
+
+case when mbpy_elig."rationCardNumber" is not null then 1 else 0 end as pension_support_eligible,
+case when mbpy_avail."rationCardNumber" is not null then 1 else 0 end as pension_support_avail, 
+
+case when mjjy_elig."rationCardNumber" is not null then 1 else 0 end as land_titles_eligible,
+case when mjjy_avail."rationCardNumber" is not null then 1 else 0 end as land_titles_avail,
+
+case when mam."rationCardNumber" is not null then 1 else 0 end AS maternal_health_benefit_eligible,
+case when mam1."rationCardNumber" is not null then 1 else 0 end AS maternal_health_benefit_avail,
+
+case when ben."rationCardNumber" is not null and ben."rationCardNumber" <> '' then 1 else 0 end AS health_insurance_eligible,
+case when bsky."rationCardNumber" is not null and bsky."rationCardNumber" <> '' then 1 else 0 end AS health_insurance_avail,
+
+case when ben."rationCardNumber" is not null and ben."rationCardNumber" <> '' then 1 else 0 end as access_to_shc_eligible,
+case when shc_avail."rationCardNumber" is not null then 1 else 0 end as access_to_shc_avail,
+
+case when ben."rationCardNumber" is not null and ben."rationCardNumber" <> '' then 1 else 0 end AS food_security_eligible,
+case when (sfss.rationcard_number is not null or nfsa.rationcard_number is not null) then 1 else 0 end AS food_security_avail,
+
+case when ben."rationCardNumber" is not null and ben."rationCardNumber" <> '' then 1 else 0 end AS access_to_awc_eligible,
+case when awc_avail."rationCardNumber" is not null then 1 else 0 end AS access_to_awc_avail,
+
+case when sch_elig."rationCardNumber" is not null then 1 else 0 end AS scholarship_eligible,
+case when sch_avail."rationCardNumber" is not null then 1 else 0 end AS scholarship_avail,
+
+case when sams_elig."rationCardNumber" is not null then 1 else 0 end AS higher_education_enrolment_eligible,
+case when sams_avail."rationCardNumber" is not null then 1 else 0 end AS higher_education_enrolment_avail
+
+
+--select count(*) 
+from 
+cte_rationcard_numbers ben --8482955
+
+left join 
+cte_access_to_drinking_water_avail drinking_water_avail on ben."rationCardNumber"  = drinking_water_avail."rationCardNumber" 
+
+left join 
+cte_mbpy_eligible mbpy_elig on ben."rationCardNumber"  = mbpy_elig."rationCardNumber" 
+left join
+cte_mbpy_availed mbpy_avail on ben."rationCardNumber"  = mbpy_avail."rationCardNumber" 
+
+left join 
+cte_land_titles_mjjy_eligible mjjy_elig on mjjy_elig."rationCardNumber" = ben."rationCardNumber"
+left join 
+cte_land_titles_mjjy_eligible mjjy_avail on mjjy_avail."rationCardNumber" = ben."rationCardNumber"
+
+left join 
+cte_mamata_eligible mam on ben."rationCardNumber"  = mam."rationCardNumber"
+left join 
+cte_mamata_availed mam1 on ben."rationCardNumber"  = mam1."rationCardNumber" 
+
+left join 
+cte_bsky bsky on ben."rationCardNumber"  = bsky."rationCardNumber"
+
+left join 
+cte_access_to_shc_avail shc_avail on shc_avail."rationCardNumber" = ben."rationCardNumber"
+
+left join 
+cte_sfss sfss  on ben."rationCardNumber"  = sfss.rationcard_number 
+left join 
+cte_nfsa nfsa  on ben."rationCardNumber"  = nfsa.rationcard_number 
+
+left join
+cte_access_to_awc_avail awc_avail on ben."rationCardNumber"  = awc_avail."rationCardNumber" 
+
+LEFT JOIN 
+cte_scholarship_eligible sch_elig ON sch_elig."rationCardNumber" = ben."rationCardNumber"
+LEFT JOIN
+cte_scholarship_avail sch_avail ON sch_avail."rationCardNumber" = ben."rationCardNumber"
+
+LEFT JOIN 
+cte_sams_eligible sams_elig on ben."rationCardNumber"  = sams_elig."rationCardNumber" 
+LEFT JOIN 
+cte_sams_avail sams_avail on ben."rationCardNumber"  = sams_avail."rationCardNumber" 
+)res
+------------------------------------------------------------------------------------------------------------------------------------------
