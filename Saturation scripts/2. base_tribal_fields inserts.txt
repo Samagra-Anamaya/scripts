@@ -1,10 +1,7 @@
-
-------------------------------------------------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------------------
 ---Base table having rows from all the sources:----------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------------------
-
+-----------------------------------------------------------------------------------------------------------------------------------
 TRUNCATE TABLE base_tribal_fields;
-
 INSERT INTO base_tribal_fields
 (aadhaar_reference_number, aadhaar_number, rationcard_number, beneficiary_name, gender, date_of_birth, year_of_birth, social_category, tribe_name, pvtg_or_nonpvtg, address, gp_name, gp_code, block_name, block_code, district_name, district_code, village_name, village_lgd, pin_code, primary_mobile_number, primary_source_of_livelihood,primary_source_of_livelihood_timestamp, disability_status, marital_status, educational_qualification, number_of_members_in_family, annual_income_from_all_sources,income_group, land_holding, source_id, inserted_ts, updated_ts)
 
@@ -460,6 +457,49 @@ null as land_holding,
 from cte_sams_dedup o 
 where aadhaar_number is not null and aadhaar_number <> '' and aadhaar_number <> '0'
 
+union all 
+------------------------------------------------------
+--8.MJJY
+------------------------------------------------------
+SELECT 
+null as aadhaar_reference_number,
+aadhaar_number as aadhaar_number,
+"rationCardNumber" as rationcard_number,
+"beneficiaryName" as beneficiary_name, -- beneficiary_name not found
+"gender" as gender,	-- gender not found
+"dateOfBirth" as date_of_birth,
+null as year_of_birth,
+"socialCategory" as social_category,
+tribename as tribe_name,
+null as pvtg_or_nonpvtg,
+address as address,
+"gpName" AS gp_name,
+"gpLGDCode" as gp_code,
+"blockName" AS block_name,
+"blockLGDCode" as block_code,
+"districtName" AS district_name,
+"districtLGDCode" as district_code,
+"villageName" as village_name,
+"villageLGDCode" as village_lgd,
+null as pin_code,
+null as primary_mobile_number,
+"primarySourceOfLivelihood" as primary_source_of_livelihood,
+null as primary_source_of_livelihood_timestamp,
+"isDisable" as disability_status,
+"maritalStatus" as marital_status,--not found
+"educationalQualification" as educational_qualification,
+cast("numberOfMemberInFamily" as numeric) as number_of_members_in_family,
+null as annual_income_from_all_sources,
+null as income_group,
+case when ISNUMERIC(TRIM(area)) and TRIM(LOWER(areaUnits)) = 'hectares' 
+then cast(2.47105*cast(area as numeric) as varchar)
+when ISNUMERIC(TRIM(area)) and TRIM(LOWER(areaUnits)) = 'acres' 
+then area
+else null end as land_holding,
+--area,areaUnits,
+8 as source_id
+from undefinedproxy_matched_beneficiaries_latest pmb  
+where aadhaar_number is not null and aadhaar_number <> '' and aadhaar_number <> '0'
 ------------------------------------------------------
 ) as all_transactions 
 left join 
