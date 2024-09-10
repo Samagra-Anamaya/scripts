@@ -2,6 +2,7 @@
 ---Base table having rows from all the sources:----------------------------------------------------------------------------
 -----------------------------------------------------------------------------------------------------------------------------------
 TRUNCATE TABLE base_tribal_fields;
+
 INSERT INTO base_tribal_fields
 (aadhaar_reference_number, aadhaar_number, rationcard_number, beneficiary_name, gender, date_of_birth, year_of_birth, social_category, tribe_name, pvtg_or_nonpvtg, address, gp_name, gp_code, block_name, block_code, district_name, district_code, village_name, village_lgd, pin_code, primary_mobile_number, primary_source_of_livelihood,primary_source_of_livelihood_timestamp, disability_status, marital_status, educational_qualification, number_of_members_in_family, annual_income_from_all_sources,income_group, land_holding, source_id, inserted_ts, updated_ts)
 
@@ -65,7 +66,7 @@ select * from
 select *,row_number () over (partition by "aadhar_number" order by id desc) as rn
 from 
 --undefinedmbpy_application_new mbpy
-undefinedmbpy mbpy
+undefinedmbpy_application_new mbpy
 WHERE
      mbpy."aadhar_number" IS NOT NULL AND mbpy."aadhar_number" <> '' 
  --   AND mbpy."sanction_date" IS NOT NULL AND mbpy."sanction_date" <> ''
@@ -517,4 +518,4 @@ from "VillageData"
 on upper(trim("villageName")) = upper(trim(all_transactions.village_name)) and 
 TRIM(UPPER("districtName")) = upper(trim(all_transactions.district_name)) and 
 TRIM(UPPER("gpName"))= upper(trim(all_transactions.gp_name)) and 
-TRIM(UPPER("blockName")) = upper(trim(all_transactions.block_name)) 
+TRIM(UPPER("blockName")) = upper(trim(all_transactions.block_name)) ;
