@@ -1,10 +1,13 @@
------------------------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------------------
 ---Base table having rows from all the sources:----------------------------------------------------------------------------
------------------------------------------------------------------------------------------------------------------------------------
-TRUNCATE TABLE IF EXISTS base_tribal_fields;
+------------------------------------------------------------------------------------------------------------------------------------
+
+TRUNCATE TABLE if exists base_tribal_fields;
+
 
 INSERT INTO base_tribal_fields
 (aadhaar_reference_number, aadhaar_number, rationcard_number, beneficiary_name, gender, date_of_birth, year_of_birth, social_category, tribe_name, pvtg_or_nonpvtg, address, gp_name, gp_code, block_name, block_code, district_name, district_code, village_name, village_lgd, pin_code, primary_mobile_number, primary_source_of_livelihood,primary_source_of_livelihood_timestamp, disability_status, marital_status, educational_qualification, number_of_members_in_family, annual_income_from_all_sources,income_group, land_holding, source_id, inserted_ts, updated_ts)
+
 
 --1.PDS -- dedupe
 with cte_pds_dedup as
@@ -75,7 +78,6 @@ WHERE
 
 )res where res.rn = 1
 ),
-
 --scholarship dedupe
 cte_scholarship_dedup as
 (
@@ -354,7 +356,7 @@ block_name as block_name,
 block_id as block_code,
 district_name as district_name,
 district_id as district_code,
-village_name as village_name,
+null as village_name,
 village_id as village_lgd,
 pin_number as pin_code,
 case when ISNUMERIC(TRIM(mobile_number)) and length(TRIM(mobile_number)) = 10 then TRIM(mobile_number) else null end as primary_mobile_number,
@@ -465,31 +467,31 @@ union all
 SELECT 
 null as aadhaar_reference_number,
 aadhaar_number as aadhaar_number,
-"rationCardNumber" as rationcard_number,
-"beneficiaryName" as beneficiary_name, -- beneficiary_name not found
-"gender" as gender,	-- gender not found
-"dateOfBirth" as date_of_birth,
+rationCardNumber as rationcard_number,
+beneficiaryName as beneficiary_name, 
+"gender" as gender,	
+dateOfBirth as date_of_birth,
 null as year_of_birth,
-"socialCategory" as social_category,
+socialCategory as social_category,
 tribename as tribe_name,
 null as pvtg_or_nonpvtg,
 address as address,
-"gpName" AS gp_name,
-"gpLGDCode" as gp_code,
-"blockName" AS block_name,
-"blockLGDCode" as block_code,
-"districtName" AS district_name,
-"districtLGDCode" as district_code,
-"villageName" as village_name,
-"villageLGDCode" as village_lgd,
+gpName AS gp_name,
+gpLGDCode as gp_code,
+blockName AS block_name,
+blockLGDCode as block_code,
+districtName AS district_name,
+districtLGDCode as district_code,
+villageName as village_name,
+villageLGDCode as village_lgd,
 null as pin_code,
 null as primary_mobile_number,
-"primarySourceOfLivelihood" as primary_source_of_livelihood,
+primarySourceOfLivelihood as primary_source_of_livelihood,
 null as primary_source_of_livelihood_timestamp,
-"isDisable" as disability_status,
-"maritalStatus" as marital_status,--not found
-"educationalQualification" as educational_qualification,
-cast("numberOfMemberInFamily" as numeric) as number_of_members_in_family,
+isDisable as disability_status,
+maritalStatus as marital_status,--not found
+educationalQualification as educational_qualification,
+cast(numberOfMemberInFamily as numeric) as number_of_members_in_family,
 null as annual_income_from_all_sources,
 null as income_group,
 case when ISNUMERIC(TRIM(area)) and TRIM(LOWER(areaUnits)) = 'hectares' 
@@ -519,3 +521,4 @@ on upper(trim("villageName")) = upper(trim(all_transactions.village_name)) and
 TRIM(UPPER("districtName")) = upper(trim(all_transactions.district_name)) and 
 TRIM(UPPER("gpName"))= upper(trim(all_transactions.gp_name)) and 
 TRIM(UPPER("blockName")) = upper(trim(all_transactions.block_name)) ;
+
