@@ -1,6 +1,6 @@
-------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------
 ---base_tribal_fields DDL----------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------
 
 -- public.base_tribal_fields definition
 
@@ -54,7 +54,6 @@ CREATE TABLE if not EXISTS base_tribal_fields (
 -- Drop table
 
 -- DROP TABLE public.base_tribal_fields_saturated;
-
 
 CREATE table if not exists base_tribal_fields_saturated (
 	aadhaar_reference_number varchar(255) NULL,
@@ -149,11 +148,12 @@ INSERT INTO source_master(source_id, source_name, source_desc, is_active, create
 INSERT INTO source_master(source_id, source_name, source_desc, is_active, created_date, updated_date) values ('5','MBPY','MBPY',TRUE,CURRENT_DATE, CURRENT_DATE);
 INSERT INTO source_master(source_id, source_name, source_desc, is_active, created_date, updated_date) values ('6','Scholarships','Scholarships',TRUE,CURRENT_DATE, CURRENT_DATE);
 INSERT INTO source_master(source_id, source_name, source_desc, is_active, created_date, updated_date) values ('7','SAMS','SAMS',TRUE,CURRENT_DATE, CURRENT_DATE);
-INSERT INTO source_master(source_id, source_name, source_desc, is_active, created_date, updated_date) values ('8','VillageData','Indirect source',TRUE,CURRENT_DATE, CURRENT_DATE);
+INSERT INTO source_master(source_id, source_name, source_desc, is_active, created_date, updated_date) values ('8','MJJY','MJJY',TRUE,CURRENT_DATE, CURRENT_DATE);
+INSERT INTO source_master(source_id, source_name, source_desc, is_active, created_date, updated_date) values ('9','VillageData','Indirect source',TRUE,CURRENT_DATE, CURRENT_DATE);
 
-------------------------------------------------------------------------------------------------------------------------------------
----Function to check is numeric value or not--------------------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------------------
+---Function to check is numeric value or not--------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION isnumeric(text) RETURNS BOOLEAN AS $$
 DECLARE x NUMERIC;
 BEGIN
