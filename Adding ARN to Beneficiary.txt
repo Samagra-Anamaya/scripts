@@ -1,0 +1,9 @@
+--Adding ARN to external beneficiary detail table
+
+alter table external_beneficiary_detail add column aadhaar_reference_number varchar(255);
+
+UPDATE external_beneficiary_detail as ebd 
+SET aadhaar_reference_number = arm.aadhaar_reference
+FROM undefinedaadhaar_reference_mapping AS arm
+WHERE ebd."aadhaarVaultReference" = arm.aadhaar ;
+

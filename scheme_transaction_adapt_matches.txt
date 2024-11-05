@@ -1,0 +1,53 @@
+--ADAPT matches
+drop table if exists scheme_transaction_adapt_matches;
+create table public.scheme_transaction_adapt_matches
+as
+with cte_beneficiary as
+(
+	SELECT "aadhaarVaultReference", "beneficiaryName", "beneficiaryFatherName", "beneficiaryMotherName", "beneficiarySpouseName", gender, "dateOfBirth", "socialCategory", address, "districtName", "districtLGDCode", "blockName", "blockLGDCode", "gpName", "gpLGDCode", "villageName", "villageLGDCode", "isDisable", "maritalStatus", "educationalQualification", "spdpMemberId", "numberOfMemberInFamily", "rationCardNumber", "primarySourceOfLivelihood", "spdpFamilyId"
+	from
+	(
+		select *,row_number() over (partition by "aadhaarVaultReference" order by id desc) as rn from external_beneficiary_detail
+		where "aadhaarVaultReference" is not null and "aadhaarVaultReference" <> ''
+	) where rn = 1
+),
+cte_st as 
+(
+	SELECT id, scheme_code, aadhaar_reference_number, unique_beneficiary_id, financial_year, transaction_type, transaction_amount, in_kind_benefit_detail, transaction_date, remarks, user_id, created_at, updated_at, scheme_data
+ 		from 
+	(
+		select *,row_number() over (partition by scheme_code, UPPER(TRIM(cast("scheme_data" as jsonb)->>'beneficiaryName')),RIGHT(cast("scheme_data" as jsonb)->>'aadhaarNo',4) order by id) as rownum
+		from scheme_transaction
+		where scheme_code in ('IAP_ADAPT','GI_ADAPT','IPP_ADAPT','NMD_ADAPT','CDP_ADAPT','IAF_ADAPT','MMM_ADAPT','FRUIT_ADAPT','PVS_ADAPT')
+	)
+	where rownum = 1
+)
+,
+cte_exact as
+--duplicate example: 2,741,691,2,742,552
+(
+select *,
+	cast("scheme_data" as jsonb)->>'aadhaarNo' as aadhaar_number,RIGHT(cast("scheme_data" as jsonb)->>'aadhaarNo',4),
+	TRIM(UPPER(cast("scheme_data" as jsonb)->>'beneficiaryName')) as beneficiary_name,'Exact' as match_type
+	from cte_st st 
+	inner join cte_beneficiary ben 
+		on UPPER(TRIM(ben."beneficiaryName")) = UPPER(TRIM(cast("scheme_data" as jsonb)->>'beneficiaryName'))
+			and RIGHT(cast("scheme_data" as jsonb)->>'aadhaarNo',4)	 = RIGHT(ben."aadhaarVaultReference",4) 					
+),
+cte_proxy as 
+(
+select *,
+	cast("scheme_data" as jsonb)->>'aadhaarNo' as aadhaar_number,RIGHT(cast("scheme_data" as jsonb)->>'aadhaarNo',4),
+	TRIM(UPPER(cast("scheme_data" as jsonb)->>'beneficiaryName')) as beneficiary_name,'Proxy' as match_type
+	from cte_st st 
+	inner join cte_beneficiary ben 
+		on  RIGHT(cast("scheme_data" as jsonb)->>'aadhaarNo',4)	 = RIGHT(ben."aadhaarVaultReference",4) 
+			and SIMILARITY(UPPER(TRIM(ben."beneficiaryName")),UPPER(TRIM(cast("scheme_data" as jsonb)->>'beneficiaryName')))  > 0.6 
+			where not exists (select 1 from cte_exact ce where ce.aadhaar_number = cast(st."scheme_data" as jsonb)->>'aadhaarNo')
+
+)
+select * from cte_exact
+union all
+select * from cte_proxy
+;
+
