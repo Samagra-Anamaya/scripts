@@ -1,0 +1,31 @@
+import hashlib
+
+def hash_aadhaar(aadhaar):
+    # Convert Aadhaar value to bytes
+    aadhaar_bytes = aadhaar.encode('utf-8')
+
+    # Hash the Aadhaar value using SHA-256
+    hashed_aadhaar = hashlib.sha256(aadhaar_bytes).hexdigest()
+
+    return hashed_aadhaar
+
+# List of Aadhaar values
+aadhaar_values = [
+    "430649275713",
+    "861889279372",
+    "271269573968",
+    "677112632028"
+]
+for aadhaar in aadhaar_values:
+    hashed_aadhaar = hash_aadhaar(aadhaar)
+    print(f"Aadhaar: {aadhaar}, Hashed: {hashed_aadhaar}")
+
+
+
+cd ~desktop
+
+curl -X POST -H "Authorization: Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IkhsWmo0cHMwSkhLNVRCU3BmcUlhdVdvRnBJayJ9.eyJhdWQiOiIwNDk3OWQyYy1hNmE3LTRhZDgtOWRkMC00MzRmZDUwNjJmZTMiLCJleHAiOjE3MjMwMDg0NjcsImlhdCI6MTcyMjkyMjA2NywiaXNzIjoiYWNtZS5jb20iLCJzdWIiOiI0ODdlZDY1YS0wYWZiLTRkNWYtODZjOC1mYjRmMDA5YjI0OWEiLCJqdGkiOiJhMmJjM2Y2MC03YWY5LTQ4ZTUtYTVjNy0zMzFlMGRmNGE5YzQiLCJhdXRoZW50aWNhdGlvblR5cGUiOiJQQVNTV09SRCIsInByZWZlcnJlZF91c2VybmFtZSI6ImRocnV2X2NzdiIsImFwcGxpY2F0aW9uSWQiOiIwNDk3OWQyYy1hNmE3LTRhZDgtOWRkMC00MzRmZDUwNjJmZTMiLCJyb2xlcyI6WyJkYXNoYm9hcmQiLCJkZXBhcnRtZW50Il0sImF1dGhfdGltZSI6MTcyMjkyMjA2NywidGlkIjoiZDNlMmQwMzQtYWE2OC1kMTUxLWYzMzMtODgwMTdhMTQ0MTFiIn0.N0l-s7_erxJMvikSkCRKWpQu7uE6WbuVPEioV24rmwQcn7wVyFy0JIjMC_HUR4igHYi3BOMQ42jJPtXFVJhgPjQc-AKm-hTfKgVGMvj8jRA9LKiPwlb6azsqqZgd68VgU-tS6xXvTGAr286umP7mjZrvPNDt993x6p_kUVfsZQpJzPWKCVfqLaGYOhfA_IMElxOPdZEn7rh4nco4HP9S0_qKozjRcUBTASDgNGevVskAsg1GV073vogK_C3l6cvnWCJFCC1tZBzJbHJB2smMcpEjSIPK2AApPAIxtihj8HVspZpPKsezuf9Yp614YbtELip6x1KnlV63qBG3HfZ9Wg" -F file=@proxy_matched_beneficiaries.csv https://qlistsc.odisha.gov.in/backend/ste/uploadCSV 
+
+
+
+
