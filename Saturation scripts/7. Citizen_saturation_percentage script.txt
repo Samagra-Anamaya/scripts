@@ -1,8 +1,7 @@
 ------------------------------------------------------------------------------------------------------------------------------------
 ---citizen_saturation_percentage----------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------------------------------------------
-drop table if exists citizen_saturation_percentage;
-create table citizen_saturation_percentage
+create table as citizen_saturation_percentage
 as
 select all_cols.column_name,coalesce((b.total_cnt/a.total_cnt)*100,0) as saturation_percent, coalesce(b.total_cnt,0) as total_saturation_count, coalesce(a.total_cnt,0) as total_null_count from 
 
