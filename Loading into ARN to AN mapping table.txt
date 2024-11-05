@@ -1,0 +1,6 @@
+--Loading into ARN to AN mapping table
+
+insert into undefinedaadhaar_reference_mapping(aadhaar,aadhaar_reference)
+select aadhaar,aadhaar_reference from undefinedan_to_arn_mapping a 
+where aadhaar is not null and aadhaar <> ''
+and not exists(select 1 from undefinedaadhaar_reference_mapping urm where urm.aadhaar = a.aadhaar) ;
