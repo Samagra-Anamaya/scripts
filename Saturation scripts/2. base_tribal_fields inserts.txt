@@ -142,7 +142,7 @@ name as beneficiary_name,
 null as gender,
 null as date_of_birth,
 null as year_of_birth,
-null as   social_category,
+null as	social_category,
 null as tribe_name,
 null as pvtg_or_nonpvtg,
 null as address,
@@ -184,7 +184,7 @@ null as gender,
 null as date_of_birth,
 cast((case when ISNUMERIC(LEFT(m.pregnancy_reg_date,4)) then cast(LEFT(m.pregnancy_reg_date,4) as Int) else null
 end)-cast(m.age as INT) as varchar) as year_of_birth,
-caste_name as  social_category,
+caste_name as	social_category,
 null as tribe_name,
 pvtg_or_not as pvtg_or_nonpvtg,
 null as address,
@@ -228,10 +228,10 @@ case
 when TRIM(gender_21)='(Female)Female' then 'Female'
 when TRIM(gender_21)='(Male)Male' then 'Male'
 else null
-end as gender, 
+end as gender,	
 null as date_of_birth,
 null as year_of_birth,
-null as   social_category,
+null as	social_category,
 case 
 when au_2='BDA Mudulipada' then 'Bonda'
 when au_2='BJDA Sukinda' then 'Birhor, Juang'
@@ -291,7 +291,7 @@ aadhaar_reference_number as aadhaar_reference_number,
 aadhaar as aadhaar_number,
 TRIM(cast("scheme_data" as jsonb)->>'rationCardNo') as rationcard_number,
 null as beneficiary_name, -- beneficiary_name not found
-null as gender,     -- gender not found
+null as gender,	-- gender not found
 null as date_of_birth,
 null as year_of_birth,
 TRIM(cast("scheme_data" as jsonb)->>'socialCategory') as social_category,
@@ -337,14 +337,14 @@ case
 when TRIM(gender_id)='1' then 'Male'
 when TRIM(gender_id)='2' then 'Female'
 else null
-end as gender, 
+end as gender,	
 applicant_dob as date_of_birth,
 cast(extract(year from to_date(applicant_dob,
 CASE
            WHEN applicant_dob LIKE '____-__-__' THEN 'YYYY-MM-DD'
            WHEN applicant_dob LIKE '__-__-____' THEN 'DD-MM-YYYY'
          end)) AS varchar) as year_of_birth,
-'ST' as   social_category,--column not found
+'ST' as	social_category,--column not found
 null as tribe_name,
 null as pvtg_or_nonpvtg,
 null as address,
@@ -361,7 +361,7 @@ case when ISNUMERIC(TRIM(mobile_number)) and length(TRIM(mobile_number)) = 10 th
 null as primary_source_of_livelihood,
 null as primary_source_of_livelihood_timestamp,
 case when trim(disability_type_id) is null then null 
-     when trim(disability_type_id) = '' then 'false' else 'true' end  as disability_status,
+	when trim(disability_type_id) = '' then 'false' else 'true' end  as disability_status,
 null as marital_status,-- column not available
 null as educational_qualification,
 null as number_of_members_in_family,
@@ -386,7 +386,7 @@ aadhaar_reference_number as aadhaar_reference_number,
 aadhaar as aadhaar_number,
 null as rationcard_number,
 TRIM(cast("scheme_data" as jsonb)->>'beneficiaryName') as beneficiary_name, -- beneficiary_name not found
-TRIM(cast("scheme_data" as jsonb)->>'gender') as gender,    -- gender not found
+TRIM(cast("scheme_data" as jsonb)->>'gender') as gender,	-- gender not found
 null as date_of_birth,
 null as year_of_birth,
 TRIM(cast("scheme_data" as jsonb)->>'socialCategory') as social_category,
@@ -427,7 +427,7 @@ aadhaar_reference_number as aadhaar_reference_number,
 aadhaar_number as aadhaar_number,
 TRIM(cast("scheme_data" as jsonb)->>'rationCardNumber') as rationcard_number,
 TRIM(cast("scheme_data" as jsonb)->>'beneficiaryName') as beneficiary_name, -- beneficiary_name not found
-TRIM(cast("scheme_data" as jsonb)->>'gender') as gender,    -- gender not found
+TRIM(cast("scheme_data" as jsonb)->>'gender') as gender,	-- gender not found
 TRIM(cast("scheme_data" as jsonb)->>'dateOfBirth') as date_of_birth,
 null as year_of_birth,
 TRIM(cast("scheme_data" as jsonb)->>'socialCategory') as social_category,
@@ -467,7 +467,7 @@ null as aadhaar_reference_number,
 aadhaar_number as aadhaar_number,
 rationCardNumber as rationcard_number,
 beneficiaryName as beneficiary_name, 
-"gender" as gender, 
+"gender" as gender,	
 dateOfBirth as date_of_birth,
 null as year_of_birth,
 socialCategory as social_category,
@@ -506,16 +506,22 @@ where aadhaar_number is not null and aadhaar_number <> '' and aadhaar_number <> 
 left join 
 (
 select * from 
-(select row_number() over (partition by upper(trim("villageName")),TRIM(UPPER("districtName")),TRIM(UPPER("gpName")),TRIM(UPPER("blockName")) 
-    order by id) as rn, upper(trim("villageName")) as "villageName",TRIM(UPPER("districtName")) as "districtName"
-    ,TRIM(UPPER("gpName")) as "gpName",TRIM(UPPER("blockName")) as "blockName",
-    replace("spdpVillageId",',','') as "spdpVillageId",
-    replace("districtCode",',','') as "districtCode",
-    replace("blockCode",',','') as "blockCode",
-    replace("gpCode",',','') as "gpCode"
-from "VillageData"
+(select row_number() over (partition by upper(trim(village_name)),TRIM(UPPER(district_name)),TRIM(UPPER(gp_name)),TRIM(UPPER(block_name)) 
+    order by id) as rn, upper(trim(village_name)) as "villageName",TRIM(UPPER(district_name)) as "districtName"
+    ,TRIM(UPPER(gp_name)) as "gpName",TRIM(UPPER(block_name)) as "blockName",
+    replace(spdp_village_id,',','') as "spdpVillageId",
+    replace(district_code,',','') as "districtCode",
+    replace(block_code,',','') as "blockCode",
+    replace(gp_code,',','') as "gpCode"
+from undefinedvillage_master
 )res where res.rn = 1) v 
 on upper(trim("villageName")) = upper(trim(all_transactions.village_name)) and 
 TRIM(UPPER("districtName")) = upper(trim(all_transactions.district_name)) and 
 TRIM(UPPER("gpName"))= upper(trim(all_transactions.gp_name)) and 
 TRIM(UPPER("blockName")) = upper(trim(all_transactions.block_name)) ;
+
+------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+
