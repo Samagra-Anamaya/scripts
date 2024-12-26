@@ -2,28 +2,29 @@
 ---Final table to load the tribal saturated fields:----------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------------------------------------------
 truncate table base_tribal_fields_saturated;
+
 INSERT INTO base_tribal_fields_saturated
 (aadhaar_reference_number, aadhaar_reference_number_src, aadhaar_number, aadhaar_number_src, rationcard_number, rationcard_number_src, beneficiary_name, beneficiary_name_src, gender, gender_src, date_of_birth, date_of_birth_src, year_of_birth, year_of_birth_src, social_category, social_category_src, tribe_name, tribe_name_src, pvtg_or_nonpvtg, pvtg_or_nonpvtg_src, address, address_src, gp_name, gp_name_src, gp_code, gp_code_src, block_name, block_name_src, block_code, block_code_src, district_name, district_name_src, district_code, district_code_src, village_name, village_name_src, village_lgd, village_lgd_src, pin_code, pin_code_src, primary_mobile_number, primary_mobile_number_src, primary_source_of_livelihood, primary_source_of_livelihood_src, primary_source_of_livelihood_timestamp, primary_source_of_livelihood_timestamp_src,disability_status, disability_status_src, marital_status, marital_status_src, educational_qualification, educational_qualification_src, number_of_members_in_family, number_of_members_in_family_src, annual_income_from_all_sources, annual_income_from_all_sources_src,income_group,income_group_src, land_holding, land_holding_src, inserted_ts, updated_ts)
 
 select aadhaar_reference_number, aadhaar_reference_number_src, aadhaar_number, aadhaar_number_src, rationcard_number, rationcard_number_src, beneficiary_name, beneficiary_name_src, gender, gender_src, date_of_birth, date_of_birth_src, year_of_birth, year_of_birth_src, COALESCE(social_category,'ST') AS social_category, COALESCE(social_category_src,aadhaar_number_src) AS social_category_src, tribe_name, tribe_name_src, pvtg_or_nonpvtg, pvtg_or_nonpvtg_src, address, address_src, 
-coalesce(gp_name,vill."gpName",gp."gpName") as gp_name,
-coalesce(gp_name_src,case when (vill."gpName" is not null or gp."gpName" is not NULL) then 9 else null end) as  gp_name_src,
-coalesce(gp_code,vill."gpCode",gp1."gpCode") as gp_code,
-coalesce(gp_code_src,case when (vill."gpCode" is not null or gp1."gpCode" is not null ) then 9 else null end) as  gp_code_src,
+coalesce(gp1."gpName",gp."gpName") as gp_name,
+coalesce(gp_name_src,case when  gp."gpName" is not null then 9 else null end) as  gp_name_src,
+coalesce(gp."gpCode",gp1."gpCode") as gp_code,
+coalesce(case when  gp1."gpCode" is not null then 9 else null end,gp_code_src) as  gp_code_src,
 
-coalesce(block_name,vill."blockName",block."blockName") as block_name,
-coalesce(block_name_src,case when (vill."blockName" is not null or block."blockName" is not NULL) then 9 else null end) as  block_name_src,
-coalesce(block_code,vill."blockCode",block1."blockCode") as block_code,
-coalesce(block_code_src,case when (vill."blockCode" is not null or block1."blockCode" is not null) then 9 else null end) as  block_code_src,
+coalesce(block1."blockName",block."blockName") as block_name,
+coalesce(block_name_src,case when  block."blockName" is not NULL then 9 else null end) as  block_name_src,
+coalesce(block."blockCode",block1."blockCode") as block_code,
+coalesce(case when  block1."blockCode" is not null then 9 else null end,block_code_src) as  block_code_src,
 
-coalesce(district_name, vill."districtName",dist."districtName") as district_name,
-coalesce(district_name_src, case when (vill."districtName" is not null or dist."districtName" is not NULL) then 9 else null end) as district_name_src,
-coalesce(district_code, vill."districtCode", dist1."districtCode") as district_code,
-coalesce(district_code_src, case when (vill."districtCode" is not null or dist1."districtCode" is not null) then 9 else null end) as district_code_src,
+coalesce(dist1."districtName",dist."districtName") as district_name,
+coalesce(district_name_src, case when dist."districtName" is not NULL then 9 else null end) as district_name_src,
+coalesce(dist."districtCode", dist1."districtCode") as district_code,
+coalesce(case when dist1."districtCode" is not null then 9 else null end,district_code_src) as district_code_src,
 
-coalesce(village_name,vill."villageName") as village_name,
+coalesce(vill."villageName") as village_name,
 coalesce(village_name_src,case when vill."villageName" is not null then 9 else null end) as  village_name_src,
-coalesce(village_lgd,vill."spdpVillageId",vill1."spdpVillageId") as village_lgd,
+coalesce(vill."spdpVillageId",vill1."spdpVillageId") as village_lgd,
 coalesce(village_lgd_src,case when (vill."spdpVillageId" is not null or vill1."spdpVillageId" is not null) then 9 else null end) as village_lgd_src, 
 
 pin_code, pin_code_src, primary_mobile_number, primary_mobile_number_src, primary_source_of_livelihood, primary_source_of_livelihood_src,primary_source_of_livelihood_timestamp, primary_source_of_livelihood_timestamp_src, disability_status, disability_status_src, marital_status, marital_status_src, educational_qualification, educational_qualification_src, number_of_members_in_family, number_of_members_in_family_src, annual_income_from_all_sources, annual_income_from_all_sources_src,income_group,income_group_src, land_holding, land_holding_src, inserted_ts, updated_ts
@@ -217,8 +218,8 @@ case when ebd."gpName" = '' then null else ebd."gpName" end,
 case when s.gp_name = '' then null else s.gp_name end,
 case when sch.gp_name = '' then null else sch.gp_name end,
 case when o.gp_name = '' then null else o.gp_name end,
-case when m.gp_name = '' then null else m.gp_name end,
-case when mbpy.gp_name = '' then null else mbpy.gp_name end
+case when m.gp_name = '' then null else m.gp_name end
+--case when mbpy.gp_name = '' then null else mbpy.gp_name end
 )  as gp_name,
 
 case 
@@ -227,7 +228,7 @@ when s.gp_name is not null and s.gp_name <> '' then s.source_id
 when sch.gp_name is not null and sch.gp_name <> '' then sch.source_id
 when o.gp_name is not null and o.gp_name <> '' then o.source_id
 when m.gp_name is not null and m.gp_name <> '' then m.source_id
-when mbpy.gp_name is not null and mbpy.gp_name <> '' then mbpy.source_id
+--when mbpy.gp_name is not null and mbpy.gp_name <> '' then mbpy.source_id
 else null
 end as gp_name_src,
 
@@ -236,8 +237,8 @@ case when ebd."gpLGDCode" = '' then null else ebd."gpLGDCode" end,
 case when s.gp_code = '' then null else s.gp_code end,
 case when sch.gp_code = '' then null else sch.gp_code end,
 case when o.gp_code = '' then null else o.gp_code end,
-case when m.gp_code = '' then null else m.gp_code end,
-case when mbpy.gp_code = '' then null else mbpy.gp_code end
+case when m.gp_code = '' then null else m.gp_code end
+--case when mbpy.gp_code = '' then null else mbpy.gp_code end
 )  as gp_code,
 
 case 
@@ -246,7 +247,7 @@ when s.gp_code is not null and s.gp_code <> '' then s.source_id
 when sch.gp_code is not null and sch.gp_code <> '' then sch.source_id
 when o.gp_code is not null and o.gp_code <> '' then o.source_id
 when m.gp_code is not null and m.gp_code <> '' then m.source_id
-when mbpy.gp_code is not null and mbpy.gp_code <> '' then mbpy.source_id
+--when mbpy.gp_code is not null and mbpy.gp_code <> '' then mbpy.source_id
 else null
 end as gp_code_src,
 
@@ -255,8 +256,8 @@ case when ebd."blockName" = '' then null else ebd."blockName" end,
 case when s.block_name = '' then null else s.block_name end,
 case when sch.block_name = '' then null else sch.block_name end,
 case when o.block_name = '' then null else o.block_name end,
-case when m.block_name = '' then null else m.block_name end,
-case when mbpy.block_name = '' then null else mbpy.block_name end
+case when m.block_name = '' then null else m.block_name end
+--case when mbpy.block_name = '' then null else mbpy.block_name end
 ) as block_name,
 
 case 
@@ -265,7 +266,7 @@ when s.block_name is not null and s.block_name <> '' then s.source_id
 when sch.block_name is not null and sch.block_name <> '' then sch.source_id
 when o.block_name is not null and o.block_name <> '' then o.source_id
 when m.block_name is not null and m.block_name <> '' then m.source_id
-when mbpy.block_name is not null and mbpy.block_name <> '' then mbpy.source_id
+--when mbpy.block_name is not null and mbpy.block_name <> '' then mbpy.source_id
 else null
 end as block_name_src,
 
@@ -274,8 +275,8 @@ case when ebd."blockLGDCode" = '' then null else ebd."blockLGDCode" end,
 case when s.block_code = '' then null else s.block_code end,
 case when sch.block_code = '' then null else sch.block_code end,
 case when o.block_code = '' then null else o.block_code end,
-case when m.block_code = '' then null else m.block_code end,
-case when mbpy.block_code = '' then null else mbpy.block_code end
+case when m.block_code = '' then null else m.block_code end
+--case when mbpy.block_code = '' then null else mbpy.block_code end
 ) as block_code,
 
 case 
@@ -284,7 +285,7 @@ when s.block_code is not null and s.block_code <> '' then s.source_id
 when sch.block_code is not null and sch.block_code <> '' then sch.source_id
 when o.block_code is not null and o.block_code <> '' then o.source_id
 when m.block_code is not null and m.block_code <> '' then m.source_id
-when mbpy.block_code is not null and mbpy.block_code <> '' then mbpy.source_id
+--when mbpy.block_code is not null and mbpy.block_code <> '' then mbpy.source_id
 else null
 end as block_code_src,
 
@@ -293,8 +294,8 @@ case when ebd."districtName" = '' then null else ebd."districtName" end,
 case when s.district_name = '' then null else s.district_name end,
 case when m.district_name = '' then null else m.district_name end,
 case when sch.district_name = '' then null else sch.district_name end,
-case when o.district_name = '' then null else o.district_name end,
-case when mbpy.district_name = '' then null else mbpy.district_name end
+case when o.district_name = '' then null else o.district_name end
+--case when mbpy.district_name = '' then null else mbpy.district_name end
 ) as district_name,
 
 case 
@@ -303,7 +304,7 @@ when s.district_name is not null and s.district_name <> '' then s.source_id
 when m.district_name is not null and m.district_name <> '' then m.source_id
 when sch.district_name is not null and sch.district_name <> '' then sch.source_id
 when o.district_name is not null and o.district_name <> '' then o.source_id
-when mbpy.district_name is not null and mbpy.district_name <> '' then mbpy.source_id
+--when mbpy.district_name is not null and mbpy.district_name <> '' then mbpy.source_id
 else null
 end as district_name_src,
 
@@ -313,8 +314,8 @@ case when ebd."districtLGDCode" = '' then null else ebd."districtLGDCode" end,
 case when s.district_code = '' then null else s.district_code end,
 case when m.district_code = '' then null else m.district_code end,
 case when sch.district_code = '' then null else sch.district_code end,
-case when o.district_code = '' then null else o.district_code end,
-case when mbpy.district_code = '' then null else mbpy.district_code end
+case when o.district_code = '' then null else o.district_code end
+--case when mbpy.district_code = '' then null else mbpy.district_code end
 ) as district_code,
 
 case 
@@ -323,7 +324,7 @@ when s.district_code is not null and s.district_code <> '' then s.source_id
 when m.district_code is not null and m.district_code <> '' then m.source_id
 when sch.district_code is not null and sch.district_code <> '' then sch.source_id
 when o.district_code is not null and o.district_code <> '' then o.source_id
-when mbpy.district_code is not null and mbpy.district_code <> '' then mbpy.source_id
+--when mbpy.district_code is not null and mbpy.district_code <> '' then mbpy.source_id
 else null
 end as district_code_src,
 
@@ -332,7 +333,7 @@ case when ebd."villageName" = '' or ebd."villageName" = 'NA' then null else ebd.
 case when s.village_name = '' or s.village_name = 'NA' then null else s.village_name end,
 case when o.village_name = '' or o.village_name = 'NA' then null else o.village_name end,
 case when m.village_name = '' or m.village_name = 'NA' then null else m.village_name end,
-case when mbpy.village_name = '' or mbpy.village_name = 'NA' then null else mbpy.village_name end,
+--case when mbpy.village_name = '' or mbpy.village_name = 'NA' then null else mbpy.village_name end,
 case when mjjy.village_name = '' or mjjy.village_name = 'NA' then null else mjjy.village_name end
 ) as village_name,
 
@@ -341,7 +342,7 @@ when ebd."villageName" is not null and ebd."villageName" <> '' and ebd."villageN
 when s.village_name is not null and s.village_Name <> '' and s.village_Name <> 'NA' then s.source_id
 when o.village_name is not null and o.village_Name <> '' and o.village_Name <> 'NA' then o.source_id
 when m.village_name is not null and m.village_Name <> '' and m.village_Name <> 'NA' then m.source_id
-when mbpy.village_name is not null and mbpy.village_Name <> '' and mbpy.village_Name <> 'NA' then mbpy.source_id
+--when mbpy.village_name is not null and mbpy.village_Name <> '' and mbpy.village_Name <> 'NA' then mbpy.source_id
 when mjjy.village_name is not null and mjjy.village_Name <> '' and mjjy.village_Name <> 'NA' then mjjy.source_id
 else null
 end as village_name_src,
@@ -352,7 +353,7 @@ case when ebd."villageLGDCode" = '' or ebd."villageLGDCode" = 'NA' then null els
 case when s.village_lgd = '' or s.village_lgd = 'NA' then null else s.village_lgd end,
 case when o.village_lgd = '' or o.village_lgd = 'NA' then null else o.village_lgd end,
 case when m.village_lgd = '' or m.village_lgd = 'NA' then null else m.village_lgd end,
-case when mbpy.village_lgd = '' or mbpy.village_lgd = 'NA' then null else mbpy.village_lgd end,
+--case when mbpy.village_lgd = '' or mbpy.village_lgd = 'NA' then null else mbpy.village_lgd end,
 case when mjjy.village_lgd = '' or mjjy.village_lgd = 'NA' then null else mjjy.village_lgd end
 ) as village_lgd,
 
@@ -361,7 +362,7 @@ when ebd."villageLGDCode" is not null and ebd."villageLGDCode" <> '' and ebd."vi
 when s.village_lgd is not null and s.village_lgd <> '' and s.village_lgd <> 'NA' then s.source_id
 when o.village_lgd is not null and o.village_lgd <> '' and o.village_lgd <> 'NA' then o.source_id
 when m.village_lgd is not null and m.village_lgd <> '' and m.village_lgd <> 'NA' then m.source_id
-when mbpy.village_lgd is not null and mbpy.village_lgd <> '' and mbpy.village_lgd <> 'NA' then mbpy.source_id
+--when mbpy.village_lgd is not null and mbpy.village_lgd <> '' and mbpy.village_lgd <> 'NA' then mbpy.source_id
 when mjjy.village_lgd is not null and mjjy.village_lgd <> '' and mjjy.village_lgd <> 'NA' then mjjy.source_id
 else null
 end as village_lgd_src,
@@ -516,85 +517,88 @@ full outer join
 full outer join
 (SELECT * FROM base_tribal_fields WHERE source_id = 8)mjjy ON coalesce(ebd."aadhaarVaultReference",s.aadhaar_number,m.aadhaar_number,o.aadhaar_number,mbpy.aadhaar_number,sams.aadhaar_number,bsky.aadhaar_number,sch.aadhaar_number) = mjjy.aadhaar_number--9389603 --
 )saturation
+
 left join --9350516
-(select distinct replace("spdpVillageId",',','') as "spdpVillageId",
-UPPER(TRIM("villageName")) as "villageName",
-replace("gpCode",',','') as "gpCode",
-UPPER(TRIM("gpName")) as "gpName",
-replace("blockCode",',','') as "blockCode",
-UPPER(TRIM("blockName")) as "blockName",
-replace("districtCode",',','') as "districtCode",
-UPPER(TRIM("districtName")) as "districtName"
-from "VillageData" 
-where "spdpVillageId" is not null)vill 
+(select distinct replace(spdp_village_id,',','') as "spdpVillageId",
+UPPER(TRIM(village_name)) as "villageName",
+replace(gp_code,',','') as "gpCode",
+UPPER(TRIM(gp_name)) as "gpName",
+replace(block_code,',','') as "blockCode",
+UPPER(TRIM(block_name)) as "blockName",
+replace(district_code,',','') as "districtCode",
+UPPER(TRIM(district_name)) as "districtName"
+from undefinedvillage_master 
+where spdp_village_id is not null)vill 
 on vill."spdpVillageId" = saturation.village_lgd
 
 left join 
-(select replace("gpCode",',','') as "gpCode",UPPER(TRIM("gpName")) as "gpName" from
-(select row_number() over (partition by "gpCode" order by id) as rn, * from "VillageData")where rn = 1)gp 
+(select replace(gp_code,',','') as "gpCode",UPPER(TRIM(gp_name)) as "gpName" from
+(select row_number() over (partition by gp_code order by id) as rn, * from undefinedvillage_master)where rn = 1)gp 
 on gp."gpCode" = saturation.gp_code
 
 left join 
-(select replace("blockCode",',','') as "blockCode",UPPER(TRIM("blockName")) as "blockName" from
-(select row_number() over (partition by "blockCode" order by id) as rn, * from "VillageData")where rn = 1)block 
+(select replace(block_code,',','') as "blockCode",UPPER(TRIM(block_name)) as "blockName" from
+(select row_number() over (partition by block_code order by id) as rn, * from undefinedvillage_master)where rn = 1)block 
 on block."blockCode" = saturation.block_code
 
 left join 
-(select replace("districtCode",',','') as "districtCode",UPPER(TRIM("districtName")) as "districtName" from
-(select row_number() over (partition by "districtCode" order by id) as rn, * from "VillageData")where rn = 1)dist 
+(select replace(district_code,',','') as "districtCode",UPPER(TRIM(district_name)) as "districtName" from
+(select row_number() over (partition by district_code order by id) as rn, * from undefinedvillage_master)where rn = 1)dist 
 on dist."districtCode" = saturation.district_code
 
 left join
 (select 
-distinct replace(a."spdpVillageId",',','') as "spdpVillageId",
+distinct replace(a.spdp_village_id,',','') as "spdpVillageId",
 b."villageName"
-from "VillageData" a
+from undefinedvillage_master a
 inner join
 (select count(1),"villageName" from
-(select distinct replace("spdpVillageId",',','') as "spdpVillageId",UPPER(TRIM("villageName")) as "villageName" 
-from "VillageData" )
+(select distinct replace(spdp_village_id,',','') as "spdpVillageId",UPPER(TRIM(village_name)) as "villageName" 
+from undefinedvillage_master )
 group by "villageName" having count(1) = 1) b
-on UPPER(TRIM(a."villageName")) = b."villageName") vill1
+on UPPER(TRIM(a.village_name)) = b."villageName") vill1
 	on 
 	vill1."villageName" = UPPER(TRIM(saturation.village_name))
 
 left join
 (select 
-distinct replace(a."gpCode",',','') as "gpCode",
+distinct replace(a.gp_code,',','') as "gpCode",
 b."gpName"
-from "VillageData" a
+from undefinedvillage_master a
 inner join
 (select count(1),"gpName" from
-(select distinct UPPER(TRIM("gpName")) as "gpName" , replace("gpCode",',','') as "gpCode"
-from "VillageData" )
+(select distinct UPPER(TRIM(gp_name)) as "gpName" , replace(gp_code,',','') as "gpCode"
+from undefinedvillage_master )
 group by "gpName" having count(1) = 1) b
-on UPPER(TRIM(a."gpName")) = b."gpName")gp1
+on UPPER(TRIM(a.gp_name)) = b."gpName")gp1
 	on gp1."gpName" = UPPER(TRIM(saturation.gp_name))
 
 left join
 (select 
-distinct replace(a."blockCode",',','') as "blockCode",
+distinct replace(a.block_code,',','') as "blockCode",
 b."blockName"
-from "VillageData" a
+from undefinedvillage_master a
 inner join
 (select count(1),"blockName" from
-(select distinct UPPER(TRIM("blockName")) as "blockName" , replace("blockCode",',','') as "blockCode"
-from "VillageData" )
+(select distinct UPPER(TRIM(block_name)) as "blockName" , replace(block_code,',','') as "blockCode"
+from undefinedvillage_master )
 group by "blockName" having count(1) = 1) b
-on UPPER(TRIM(a."blockName")) = b."blockName")block1
+on UPPER(TRIM(a.block_name)) = b."blockName")block1
 	on block1."blockName" = UPPER(TRIM(saturation.block_name))
 	
 left join
 (select 
-distinct replace(a."districtCode",',','') as "districtCode",
+distinct replace(a.district_code,',','') as "districtCode",
 b."districtName"
-from "VillageData" a
+from undefinedvillage_master a
 inner join
 (select count(1),"districtName" from
-(select distinct UPPER(TRIM("districtName")) as "districtName" ,replace("districtCode",',','') as "districtCode"
-from "VillageData" )
+(select distinct UPPER(TRIM(district_name)) as "districtName" ,replace(district_code,',','') as "districtCode"
+from undefinedvillage_master )
 group by "districtName" having count(1) = 1) b
-on UPPER(TRIM(a."districtName")) = b."districtName")dist1
+on UPPER(TRIM(a.district_name)) = b."districtName")dist1
 	on dist1."districtName" = UPPER(TRIM(saturation.district_name))
 where aadhaar_number is not null and aadhaar_number <> ''
-	
+------------------------------------------------------------------------------------------------------------------------------------
+
+
