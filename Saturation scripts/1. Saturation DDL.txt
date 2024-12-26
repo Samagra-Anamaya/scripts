@@ -6,7 +6,7 @@
 
 -- Drop table
 
--- DROP TABLE public.base_tribal_fields;
+-- DROP TABLE if exists public.base_tribal_fields;
 
 CREATE TABLE if not EXISTS base_tribal_fields (
 	aadhaar_reference_number varchar(255) NOT NULL,
@@ -53,7 +53,7 @@ CREATE TABLE if not EXISTS base_tribal_fields (
 
 -- Drop table
 
--- DROP TABLE public.base_tribal_fields_saturated;
+-- DROP TABLE if exists public.base_tribal_fields_saturated;
 
 CREATE table if not exists base_tribal_fields_saturated (
 	aadhaar_reference_number varchar(255) NULL,
@@ -127,7 +127,7 @@ CREATE table if not exists base_tribal_fields_saturated (
 
 -- Drop table
 
--- DROP TABLE public.source_master;
+-- DROP TABLE if exists public.source_master;
 
 CREATE TABLE if not exists source_master (
 	source_id int4 NOT NULL,
