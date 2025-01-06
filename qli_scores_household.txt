@@ -16,6 +16,8 @@ with
 --	select distinct rationcard_number,village_lgd) from base_tribal_fields_saturated WHERE rationcard_number IS NOT null --2637452
 	
 		select rationcard_number, 
+		max(district_code) AS district_code,
+		max(district_name) AS district_name,
 		max(village_lgd) AS village_lgd,
 		max(village_name) AS village_name,
 		max(gp_code) AS gp_code,
@@ -424,7 +426,14 @@ group by rationcard_number
 
 select  
 rationcard_number,
-
+district_code,
+district_name,
+gp_code,
+gp_name,
+block_code,
+block_name,
+village_lgd,
+village_name,
 access_to_drinking_water_eligible,
 access_to_drinking_water_avail,
 case when access_to_drinking_water_eligible = 1 and access_to_drinking_water_avail = 1 then 1 else 0 end as access_to_drinking_water_qli,
@@ -473,6 +482,10 @@ banking_facility_eligible,
 banking_facility_avail,
 CASE WHEN banking_facility_eligible = 1 AND banking_facility_avail = 1 THEN 1 ELSE 0 END AS banking_facility_qli,
 
+adapt_eligible,
+adapt_avail,
+CASE WHEN adapt_eligible = 1 AND adapt_avail = 1 THEN 1 ELSE 0 END AS adapt_qli,
+
 (
     access_to_drinking_water_eligible +
     pension_support_eligible +
@@ -512,6 +525,8 @@ select
 --count(1) from
 
 ben.rationcard_number as rationcard_number,
+ben.district_code,
+ben.district_name,
 ben.gp_code,
 ben.gp_name,
 ben.block_code,
@@ -621,5 +636,4 @@ cte_adapt_avail adapt on ben.rationcard_number  = adapt.rationcard_number
 
 )res
 ------------------------------------------------------------------------------------------------------------------------------------------
---select * from undefinedadapt_schemes_data;
 ------------------------------------------------------------------------------------------------------------------------------------------
