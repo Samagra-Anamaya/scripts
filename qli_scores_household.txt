@@ -4,7 +4,6 @@
 --------------------------------------------------------------------------------------------------------------------------------------------
 DROP TABLE if exists qli_scores_household;
 create table qli_scores_household 
-
 AS
 with
 ------------------------------------------------
@@ -114,10 +113,158 @@ with
 	
 ------------------------------------------------
 --4.1	Health (Maternal Health Benefit)
-------------------------------------------------
+------------------------------------------------ 
+TempData AS (
+  
+	SELECT 
+        aadhar_no,
+        no_of_live_birth,
+        age,
+        is_late_reg,
+        husband_work_gov,
+        pvtg_or_not,
+        expect_date_of_delivery,
+        date_of_delivery,
+        fst_instl_approved_date,
+        snd_instl_approved_date,
+        fst_instl_paid_date,
+        snd_instl_paid_date,
+
+        -- Registration Eligibility
+     case when
+          cast(age as int) >= 19 and is_late_reg='false' and husband_work_gov='false' and  
+	    (pvtg_or_not='true' or (pvtg_or_not='false' and cast(no_of_live_birth as int) <=1))
+  THEN 1 ELSE 0
+        END AS registration_eligibility,
+
+        -- Due for 1st Installment
+        CASE 
+            WHEN expect_date_of_delivery IS NOT NULL 
+                AND expect_date_of_delivery != '' 
+                AND '2024-11-01'::DATE >= (expect_date_of_delivery::DATE - INTERVAL '3 MONTHS')
+            THEN 'Yes' ELSE 'No'
+        END AS due_for_1st,
+
+        -- Due for 2nd Installment
+        CASE 
+            WHEN date_of_delivery IS NOT NULL
+                AND date_of_delivery != ''
+                AND '2024-11-01'::DATE >= (date_of_delivery::DATE + INTERVAL '10 DAYS')
+            THEN 'Yes' ELSE 'No'
+        END AS due_for_2nd
+    FROM 
+        (select * from     
+    (select row_number() over (partition by aadhar_no order by id) as rn,* from
+    undefinedmamata) where rn=1) um
+    WHERE 
+        um.aadhar_no IS NOT NULL
+        AND um.aadhar_no != 'NA'
+        AND um.aadhar_no != ''
+),
+EligibilityData AS (
+    SELECT 
+        aadhar_no,
+        registration_eligibility,
+        due_for_1st,
+        due_for_2nd,
+        fst_instl_approved_date,
+        snd_instl_approved_date,
+
+        -- 1st Installment Eligibility
+        CASE 
+            WHEN fst_instl_approved_date IS NOT NULL
+                AND fst_instl_approved_date != '' 
+                AND due_for_1st = 'Yes'
+                AND registration_eligibility = 1
+            THEN 1 ELSE 0
+        END AS first_instl_eligibility,
+
+        -- 1st Installment Availment
+        CASE
+            WHEN fst_instl_paid_date IS NOT NULL
+                AND fst_instl_paid_date != ''
+            THEN 1 ELSE 0
+        END AS first_instl_availed,
+
+        -- 2nd Installment Eligibility
+        CASE 
+            WHEN snd_instl_approved_date IS NOT NULL
+                AND snd_instl_approved_date != '' 
+                AND due_for_2nd = 'Yes'
+                AND registration_eligibility = 1
+            THEN 1 ELSE 0
+        END AS second_instl_eligibility,
+         -- 2nd Installment Availment
+        CASE
+            WHEN snd_instl_paid_date IS NOT NULL
+                AND snd_instl_paid_date != ''
+            THEN 1 ELSE 0
+        END AS second_instl_availed
+    FROM 
+        TempData
+),
+--select distinct  aadhar_no from EligibilityData
 	--eligible criteria for mamata and removing duplicates
-	cte_mamata_eligible as 
+	cte_mamata_eligible_1st_inst as 
 	(
+	
+	SELECT 
+	   ben.rationcard_number ,count(1) AS eligible_count
+	FROM 
+	    (SELECT 
+	    DISTINCT aadhar_no
+	FROM 
+	    EligibilityData WHERE 
+	    first_instl_eligibility = 1)ed
+	     inner join base_tribal_fields_saturated ben on ben.aadhaar_number = ed.aadhar_no
+GROUP BY ben.rationcard_number
+  ), 
+  cte_mamata_eligible_2nd_inst as 
+	(
+	
+	SELECT 
+	   ben.rationcard_number ,count(1) AS eligible_count
+	FROM 
+	    (SELECT 
+	    DISTINCT aadhar_no
+	FROM 
+	    EligibilityData WHERE 
+	    second_instl_eligibility = 1)ed
+	     inner join base_tribal_fields_saturated ben on ben.aadhaar_number = ed.aadhar_no
+GROUP BY ben.rationcard_number
+  ), 
+  cte_mamata_avail_1st_inst as 
+	(
+	
+	SELECT 
+	   ben.rationcard_number ,count(1) AS avail_count
+	FROM 
+	    (SELECT 
+	    DISTINCT aadhar_no
+	FROM 
+	    EligibilityData WHERE 
+	    first_instl_eligibility = 1 AND first_instl_availed = 1)ed
+	     inner join base_tribal_fields_saturated ben on ben.aadhaar_number = ed.aadhar_no
+	     GROUP BY ben.rationcard_number
+
+  ), 
+   cte_mamata_avail_2nd_inst as 
+	(
+	
+	SELECT 
+	 ben.rationcard_number ,count(1) AS avail_count
+	FROM 
+	    (SELECT 
+	    DISTINCT aadhar_no
+	FROM 
+	    EligibilityData WHERE 
+	    second_instl_eligibility = 1 AND second_instl_availed = 1)ed
+	     inner join base_tribal_fields_saturated ben on ben.aadhaar_number = ed.aadhar_no
+	     GROUP BY ben.rationcard_number 
+
+  ), 
+	
+	/*
 	select distinct ben.rationcard_number
 	from
 	(
@@ -133,7 +280,10 @@ with
 	)mamata 
 	inner join base_tribal_fields_saturated ben on mamata.aadhar_no = ben.aadhaar_number
 	),
-	
+	     WHEN fst_instl_approved_date IS NOT NULL
+                AND fst_instl_approved_date != '' 
+                AND due_for_1st = 'Yes'
+                AND registration_eligibility = 1
 --	select * from undefinedmamata WHERE age IS NULL OR age = '0' OR age ='';
 
 --select distinct age from undefinedmamata u ;
@@ -165,24 +315,7 @@ with
 	inner join base_tribal_fields_saturated ben on mamata.aadhar_no = ben.aadhaar_number
 	
 	),
-	/*
-	cte_mamata_undefined as 
-	(
-	select distinct ben.rationcard_number from
-	(
-	select *
-	from (
-	select row_number() over (partition by aadhar_no order by id desc) as rn,* 
-	from undefinedmamata where 
-	    cast(age as int) >= 19 and is_late_reg='false' and husband_work_gov='false' and  
-	    (pvtg_or_not='true' or (pvtg_or_not='false' and cast(no_of_live_birth as int) <=1))
-	)res
-	where res.rn = 1
-	)mamata 
-	left join base_tribal_fields_saturated ben on mamata.aadhar_no = ben.aadhaar_number
-	where ben.aadhaar_number is null
-	),
-	*/
+*/
 ------------------------------------------------
 --4.2	Health (Health Insurance)
 ------------------------------------------------
@@ -214,10 +347,10 @@ with
 	as 
 	(
 	select distinct ben.rationcard_number from
-	base_tribal_fields_saturated ben
-	inner join 
-	(select count(*),gp_code from "public"."undefinedshc_final"
-	where tsp = 'Tribal'
+		base_tribal_fields_saturated ben
+		inner join 
+		(select count(*),gp_code from "public"."undefinedshc_final"
+		where tsp = 'Tribal'
 	group by gp_code)shc on shc.gp_code = ben.gp_code
 	
 	),
@@ -241,107 +374,151 @@ with
 	--sfss(PDS) removing duplicates
 		select distinct ben.rationcard_number from
 		(
-			select distinct aadhaar_number from 
+			select distinct rationcard_number from 
 			(
-			select row_number () over (partition by aadhaar_number order by id) as rn,aadhaar_number
+			select row_number () over (partition by rationcard_number order by id) as rn,rationcard_number
 			from 
 			undefinedsfssmemberdatashare sfss
-			where aadhaar_number is not null or aadhaar_number <> ''
+			where rationcard_number is not null or rationcard_number <> ''
 			)sfss where sfss.rn = 1
 	
-		UNION
+		union
+
 	
 	--nfsa(PDS) removing duplicates
-			select distinct aadhaar_number from 
+			select distinct rationcard_number from 
 			(
-			select row_number () over (partition by aadhaar_number order by id) as rn,aadhaar_number
+			select row_number () over (partition by rationcard_number order by id) as rn,rationcard_number
 			from 
 			undefinednfsamemberdatashare nfsa
-			where aadhaar_number is not null or aadhaar_number <> ''
+			where rationcard_number is not null or rationcard_number <> ''
 			)nfsa where nfsa.rn = 1
 		)pds
-		inner join base_tribal_fields_saturated ben on pds.aadhaar_number = ben.aadhaar_number
+		inner join base_tribal_fields_saturated ben on pds.rationcard_number = ben.rationcard_number
 		
 	),	
 ------------------------------------------------
 --7	Nutrition	Access to AWC
 ------------------------------------------------
-	cte_access_to_awc_avail as 
+	cte_access_to_awc_eligible as 
 	(
-	
 	select distinct rationcard_number
 	from
 	(
-	SELECT 
-	        replace(vd."spdpVillageId",',','') AS village_code,
-	        vd."villageName" AS village_name,
-	        vd."districtName" AS district_name,
-	        vd."blockName" AS block_name,
-	        uc."village_lgd"
-	        --select *
-	    FROM 
-	        "VillageData" vd
-	    LEFT JOIN 
-	        undefinedanganwadi_centres uc
-	        ON uc."village_lgd"::integer = replace(vd."spdpVillageId",',','')::integer
-	    WHERE
-	        LOWER(vd."isTspBlock") = 'y'
-	 )awc 
-	 inner join base_tribal_fields_saturated ben on awc.village_code = ben.village_lgd
+		SELECT 
+		      distinct replace(village_code,',','') AS village_code
+		   FROM 
+		"anganwadicenter_final_20240923071614"
+		where "type_of_village_basis_concentration" = 'Tribal'
+ 	)awc  
+   inner join base_tribal_fields_saturated ben on awc.village_code = ben.village_lgd
+   ),
+	cte_access_to_awc_avail as 
+	(
+	
+select distinct rationcard_number
+	from
+	(
+		SELECT 
+		      distinct replace(village_code,',','') AS village_code
+		   FROM 
+		"anganwadicenter_final_20240923071614"
+		where "type_of_village_basis_concentration" = 'Tribal' and "eligible_for_awc_but_without" = 'No'
+ 	)awc  
+   inner join base_tribal_fields_saturated ben on awc.village_code = ben.village_lgd
 	),
 ------------------------------------------------	
 --8	Education & Skill Development	Scholarship
 ------------------------------------------------
-	cte_scholarship_eligible 
+	cte_scholarship_premat_eligible 
 	as
 	(
-	select rationcard_number
-	from base_tribal_fields_saturated ben
-	where 
-	 DATE_PART('year', CURRENT_DATE) - cast(year_of_birth as INT) BETWEEN 15 AND 25
-	),
-	
-	cte_scholarship_avail
+	select count(1) as eligible_count, rationcard_number
+	from base_tribal_fields_saturated ebd
+	where "date_of_birth" IS NOT NULL -- Ensures date of birth is not null
+    AND "date_of_birth" <> '' -- Ensures date of birth is not empty
+    AND  
+	 case when ebd.date_of_birth_src = 0 then 
+	  (DATE_PART('year', CURRENT_DATE) - DATE_PART('year', CAST("date_of_birth" AS DATE))) BETWEEN 14 AND 18 -- Calculates age between 17 and 30
+	 else
+	 DATE_PART('year', CURRENT_DATE) - cast(year_of_birth as INT) BETWEEN 14 AND 18 end
+	 group by rationcard_number
+	 ),
+	 cte_scholarship_premat_avail
 	as
 	(
-	select distinct ben.rationcard_number
+	select  count(1) as avail_count,ben.rationcard_number
 	 FROM 
-	 scheme_transaction st 
-	inner join undefinedaadhaar_reference_mapping arm on st.aadhaar_reference_number = arm.aadhaar_reference 
-	inner join base_tribal_fields_saturated  ben on ben.aadhaar_number = arm.aadhaar 
-	where st.scheme_code in ('BOCSHP1', 'SUPITI', 'PREMAT110', 'PREMAT910', 'POSTMAT', 'BYSYO', 'JMC1112', 'VFBSCHP', 'PSMT1112', 'GSS', 'EMSCHP', 'EMSUG', 'EMGPG', 'EMGTP')
+	(
+	 select distinct  REPLACE("aadhaar_no", '''', '') as aadhaar
+    from "external_pre_matric_scholarship" )epms
+	inner join base_tribal_fields_saturated  ben on ben.aadhaar_number = epms.aadhaar 
+	group by ben.rationcard_number
+	),
+	 
+	
+	cte_scholarship_postmat_eligible 
+	as
+	(
+	select count(1) as eligible_count, rationcard_number
+	from base_tribal_fields_saturated ebd
+	where "date_of_birth" IS NOT NULL -- Ensures date of birth is not null
+    AND "date_of_birth" <> '' -- Ensures date of birth is not empty
+    AND  
+	 case when ebd.date_of_birth_src = 0 then 
+	  (DATE_PART('year', CURRENT_DATE) - DATE_PART('year', CAST("date_of_birth" AS DATE))) BETWEEN 19 AND 25 -- Calculates age between 17 and 30
+	 else
+	 DATE_PART('year', CURRENT_DATE) - cast(year_of_birth as INT) BETWEEN 19 AND 25 end
+	 group by rationcard_number
+	 ),
+	 
+	cte_scholarship_postmat_avail
+	as
+	(
+	select  count(1) as avail_count,ben.rationcard_number
+	 FROM 
+	(
+	 select distinct  REPLACE("aadhaar_no", '''', '') as aadhaar
+    from "external_post_matric_scholarship" )epms
+	inner join base_tribal_fields_saturated  ben on ben.aadhaar_number = epms.aadhaar 
+	group by ben.rationcard_number
 	),
 	
 ------------------------------------------------
---9	Education & Skill Development	Higher Education Enrolment
+--9	Education & Skill Development	Higher Education Enrolment--01010210431
 ------------------------------------------------
 	cte_sams_eligible AS
 	(
-	SELECT DISTINCT ebd.rationcard_number 
+	SELECT count(1) AS eligible_count, ebd.rationcard_number 
 	FROM base_tribal_fields_saturated ebd
 	WHERE 
-	 DATE_PART('year', CURRENT_DATE) - cast(year_of_birth as INT) BETWEEN 17 AND 30
+	 case when ebd.date_of_birth_src = 0 then 
+	  (DATE_PART('year', CURRENT_DATE) - DATE_PART('year', CAST("date_of_birth" AS DATE))) BETWEEN 17 AND 30 -- Calculates age between 17 and 30
+	 else
+	 DATE_PART('year', CURRENT_DATE) - cast(year_of_birth as INT) BETWEEN 17 AND 30 end
+	 GROUP BY ebd.rationcard_number
 	),
 
 	cte_sams_avail as
 	(
-	select DISTINCT ben.rationcard_number from 
-	
-	(
-	select id,aadhaar_number from
-	(
-	select st.*, ben.aadhaar_number as aadhaar_number,row_number () over (partition by ben.aadhaar_number order by st.id desc) as rn from 
-	
-	(select *,
-	TRIM(cast(replace(cast("scheme_data" as varchar),'\','\\') as jsonb)->>'hashed_aadhar') as hashed_aadhar
-	from scheme_transaction where TRIM(UPPER(scheme_code)) ='SAMS1') st
-	inner join 
-	(select distinct aadhaar_number from base_tribal_fields_saturated) ben
-	on st.hashed_aadhar = concat('0x',UPPER(encode(sha256(ben.aadhaar_number::bytea), 'hex')))
-	--cast("scheme_data" as jsonb)->>'rationCardNo' as rationcard_number,
-	)res where res.rn = 1
-	)sams
-	inner join base_tribal_fields_saturated ben on ben.aadhaar_number = sams.aadhaar_number
+	SELECT  ben.rationcard_number,count(1) as avail_count 
+	from
+	(select distinct ebd.aadhaar_number from 
+	(select distinct aadhaar_number 
+	FROM base_tribal_fields_saturated ebd
+	WHERE 
+	 case when ebd.date_of_birth_src = 0 then 
+	  (DATE_PART('year', CURRENT_DATE) - DATE_PART('year', CAST("date_of_birth" AS DATE))) BETWEEN 17 AND 30 -- Calculates age between 17 and 30
+	 else
+	 DATE_PART('year', CURRENT_DATE) - cast(year_of_birth as INT) BETWEEN 17 AND 30 end)ebd
+	 inner join 
+	undefinedunhashed_aadhaars_of_sams_v2 sams on ebd.aadhaar_number = sams.aadhaar_number
+	 )sams
+
+	 inner join base_tribal_fields_saturated ben on ben.aadhaar_number = sams.aadhaar_number
+	-- where rationcard_number = '01010210431'
+	 group by ben.rationcard_number
+	-- having count(1) > 1
 	),
 	
 ------------------------------------------------
@@ -454,9 +631,18 @@ land_titles_eligible,
 land_titles_avail,
 case when land_titles_eligible = 1 and land_titles_avail = 1 then 1 else 0 end as land_titles_qli,
 
-maternal_health_benefit_eligible,
-maternal_health_benefit_avail,
-case when maternal_health_benefit_eligible = 1 and maternal_health_benefit_avail = 1 then 1 else 0 end as maternal_health_benefit_qli,
+maternal_health_benefit_1st_inst_eligible,
+maternal_health_benefit_1st_inst_avail,
+case when maternal_health_benefit_1st_inst_eligible = 1 and maternal_health_benefit_1st_inst_avail = 1 then 1 else 0 end as maternal_health_benefit_1st_inst_qli,
+
+maternal_health_benefit_2nd_inst_eligible,
+maternal_health_benefit_2nd_inst_avail,
+case when maternal_health_benefit_2nd_inst_eligible = 1 and maternal_health_benefit_2nd_inst_avail = 1 then 1 else 0 end as maternal_health_benefit_2nd_inst_qli,
+
+CASE WHEN maternal_health_benefit_1st_inst_eligible = 1 OR maternal_health_benefit_2nd_inst_eligible = 1 THEN 1 ELSE 0 END AS maternal_health_benefit_eligible,
+CASE WHEN maternal_health_benefit_1st_inst_avail = 1 OR maternal_health_benefit_2nd_inst_avail = 1 THEN 1 ELSE 0 END AS maternal_health_benefit_avail,
+case when (maternal_health_benefit_1st_inst_eligible = 1 and maternal_health_benefit_1st_inst_avail = 1 ) OR
+(maternal_health_benefit_2nd_inst_eligible = 1 and maternal_health_benefit_2nd_inst_avail = 1) then 1 else 0 end as maternal_health_benefit_qli,
 
 health_insurance_eligible,
 health_insurance_avail,
@@ -474,9 +660,18 @@ access_to_awc_eligible,
 access_to_awc_avail,
 case when access_to_awc_eligible = 1 and access_to_awc_avail = 1 then 1 else 0 end AS access_to_awc_qli,
 
-scholarship_eligible,
-scholarship_avail,
-case when scholarship_eligible = 1 and scholarship_avail = 1 then 1 else 0 end AS scholarship_qli,
+scholarship_premat_eligible,
+scholarship_premat_avail,
+case when scholarship_premat_eligible = 1 and scholarship_premat_avail = 1 then 1 else 0 end AS scholarship_premat_qli,
+
+scholarship_postmat_eligible,
+scholarship_postmat_avail,
+case when scholarship_postmat_eligible = 1 and scholarship_postmat_avail = 1 then 1 else 0 end AS scholarship_postmat_qli,
+
+CASE WHEN scholarship_premat_eligible = 1 OR scholarship_postmat_eligible = 1 THEN 1 ELSE 0 END AS scholarship_eligible,
+CASE WHEN scholarship_premat_avail = 1 OR scholarship_postmat_avail = 1 THEN 1 ELSE 0 END AS scholarship_avail,
+case when (scholarship_premat_eligible = 1 and scholarship_premat_avail = 1) OR 
+(scholarship_postmat_eligible = 1 and scholarship_postmat_avail = 1) then 1 else 0 end AS scholarship_qli,
 
 higher_education_enrolment_eligible,
 higher_education_enrolment_avail,
@@ -498,12 +693,12 @@ CASE WHEN adapt_eligible = 1 AND adapt_avail = 1 THEN 1 ELSE 0 END AS adapt_qli,
     access_to_drinking_water_eligible +
     pension_support_eligible +
     land_titles_eligible +
-    maternal_health_benefit_eligible +
+    (CASE WHEN maternal_health_benefit_1st_inst_eligible = 1 OR maternal_health_benefit_2nd_inst_eligible = 1 THEN 1 ELSE 0 END) +
     health_insurance_eligible +
     access_to_shc_eligible +
     food_security_eligible +
-    access_to_awc_eligible +
-    scholarship_eligible +
+    access_to_awc_eligible  +
+    (CASE WHEN scholarship_premat_eligible = 1 OR scholarship_postmat_eligible = 1 THEN 1 ELSE 0 END) +
     higher_education_enrolment_eligible +
     adapt_eligible +
     connectivity_eligible + 
@@ -514,12 +709,12 @@ CASE WHEN adapt_eligible = 1 AND adapt_avail = 1 THEN 1 ELSE 0 END AS adapt_qli,
     access_to_drinking_water_avail +
     pension_support_avail +
     land_titles_avail +
-    maternal_health_benefit_avail +
+    (CASE WHEN maternal_health_benefit_1st_inst_avail = 1 OR maternal_health_benefit_2nd_inst_avail = 1 THEN 1 ELSE 0 END) +
     health_insurance_avail +
     access_to_shc_avail +
     food_security_avail +
     access_to_awc_avail +
-    scholarship_avail +
+    (CASE WHEN scholarship_premat_avail = 1 OR scholarship_postmat_avail = 1 THEN 1 ELSE 0 END) +
     higher_education_enrolment_avail +
     adapt_avail +
     connectivity_avail +
@@ -551,8 +746,16 @@ case when mbpy_avail.rationcard_number is not null then 1 else 0 end as pension_
 case when mjjy_elig.rationcard_number is not null then 1 else 0 end as land_titles_eligible,
 case when mjjy_avail.rationcard_number is not null then 1 else 0 end as land_titles_avail,
 
-case when mam.rationcard_number is not null then 1 else 0 end AS maternal_health_benefit_eligible,
-case when mam1.rationcard_number is not null then 1 else 0 end AS maternal_health_benefit_avail,
+--case when mam.rationcard_number is not null then 1 else 0 end AS maternal_health_benefit_eligible,
+--case when mam1.rationcard_number is not null then 1 else 0 end AS maternal_health_benefit_avail,
+
+case when mam_elig_1.rationcard_number is not null then 1 else 0 end AS maternal_health_benefit_1st_inst_eligible,
+case when mam_avail_1.rationcard_number is not null AND  mam_avail_1.avail_count = mam_elig_1.eligible_count
+then 1 else 0 end AS maternal_health_benefit_1st_inst_avail,
+
+case when mam_elig_2.rationcard_number is not null then 1 else 0 end AS maternal_health_benefit_2nd_inst_eligible,
+case when mam_avail_2.rationcard_number is not null AND mam_avail_2.avail_count = mam_elig_2.eligible_count
+then 1 else 0 end AS maternal_health_benefit_2nd_inst_avail,
 
 case when ben.rationcard_number is not null and ben.rationcard_number <> '' then 1 else 0 end AS health_insurance_eligible,
 case when bsky.rationcard_number is not null and bsky.rationcard_number <> '' then 1 else 0 end AS health_insurance_avail,
@@ -563,14 +766,23 @@ case when shc_avail.rationcard_number is not null then 1 else 0 end as access_to
 case when ben.rationcard_number is not null and ben.rationcard_number <> '' then 1 else 0 end AS food_security_eligible,
 case when pds.rationcard_number is not null then 1 else 0 end AS food_security_avail,
 
-case when ben.rationcard_number is not null and ben.rationcard_number <> '' then 1 else 0 end AS access_to_awc_eligible,
+case when awc_elig.rationcard_number is not null then 1 else 0 end AS access_to_awc_eligible,
 case when awc_avail.rationcard_number is not null then 1 else 0 end AS access_to_awc_avail,
 
-case when sch_elig.rationcard_number is not null then 1 else 0 end AS scholarship_eligible,
-case when sch_avail.rationcard_number is not null then 1 else 0 end AS scholarship_avail,
+case when premat_elig.rationcard_number is not null then 1 else 0 end AS scholarship_premat_eligible,
+case when premat_avail.rationcard_number is not null and premat_avail.avail_count = premat_elig.eligible_count
+then 1 else 0 end AS scholarship_premat_avail,
+
+case when postmat_elig.rationcard_number is not null then 1 else 0 end AS scholarship_postmat_eligible,
+case when postmat_avail.rationcard_number is not null and postmat_avail.avail_count = postmat_elig.eligible_count
+then 1 else 0 end AS scholarship_postmat_avail,
+
+--case when sams_elig.rationcard_number is not null then 1 else 0 end AS higher_education_enrolment_eligible,
+--case when sams_avail.rationcard_number is not null then 1 else 0 end AS higher_education_enrolment_avail,
 
 case when sams_elig.rationcard_number is not null then 1 else 0 end AS higher_education_enrolment_eligible,
-case when sams_avail.rationcard_number is not null then 1 else 0 end AS higher_education_enrolment_avail,
+case when sams_avail.rationcard_number is not null and sams_avail.avail_count = sams_elig.eligible_count
+then 1 else 0 end AS higher_education_enrolment_avail,
 
 case when connectivity_elig.rationcard_number is not null then 1 else 0 end as connectivity_eligible,
 case when connectivity_avail.rationcard_number is not null then 1 else 0 end as connectivity_avail,
@@ -600,9 +812,14 @@ left join
 cte_land_titles_mjjy_avail mjjy_avail on mjjy_avail.rationcard_number = ben.rationcard_number
 
 left join 
-cte_mamata_eligible mam on ben.rationcard_number  = mam.rationcard_number
+cte_mamata_eligible_1st_inst mam_elig_1 on ben.rationcard_number  = mam_elig_1.rationcard_number
 left join 
-cte_mamata_availed mam1 on ben.rationcard_number  = mam1.rationcard_number 
+cte_mamata_avail_1st_inst mam_avail_1 on ben.rationcard_number  = mam_avail_1.rationcard_number 
+
+left join 
+cte_mamata_eligible_2nd_inst mam_elig_2 on ben.rationcard_number  = mam_elig_2.rationcard_number
+left join 
+cte_mamata_avail_2nd_inst mam_avail_2 on ben.rationcard_number  = mam_avail_2.rationcard_number 
 
 left join 
 cte_bsky bsky on ben.rationcard_number  = bsky.rationcard_number
@@ -616,14 +833,19 @@ left join
 cte_pds pds  on ben.rationcard_number  = pds.rationcard_number 
 
 left join
+cte_access_to_awc_eligible awc_elig on ben.rationcard_number  = awc_elig.rationcard_number 
+left join
 cte_access_to_awc_avail awc_avail on ben.rationcard_number  = awc_avail.rationcard_number 
 
-
+LEFT JOIN 
+cte_scholarship_premat_eligible premat_elig ON premat_elig.rationcard_number = ben.rationcard_number
+LEFT join
+cte_scholarship_premat_avail premat_avail ON premat_avail.rationcard_number = ben.rationcard_number
 
 LEFT JOIN 
-cte_scholarship_eligible sch_elig ON sch_elig.rationcard_number = ben.rationcard_number
+cte_scholarship_postmat_eligible postmat_elig ON postmat_elig.rationcard_number = ben.rationcard_number
 LEFT join
-cte_scholarship_avail sch_avail ON sch_avail.rationcard_number = ben.rationcard_number
+cte_scholarship_postmat_avail postmat_avail ON postmat_avail.rationcard_number = ben.rationcard_number
 
 LEFT JOIN 
 cte_sams_eligible sams_elig on ben.rationcard_number  = sams_elig.rationcard_number 
