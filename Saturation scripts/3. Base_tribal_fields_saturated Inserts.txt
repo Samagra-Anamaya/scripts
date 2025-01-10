@@ -24,7 +24,7 @@ coalesce(district_code_src,case when coalesce(block."districtCode",gp."districtC
 
 coalesce(vill1."villageName",vill."villageName") as village_name,
 coalesce(village_name_src,case when vill."villageName" is not null then 9 else null end) as  village_name_src,
-coalesce(vill."spdpVillageId",vill1."villageName") as village_lgd,
+coalesce(vill."spdpVillageId",vill1."spdpVillageId") as village_lgd,
 coalesce(village_lgd_src,case when vill1."spdpVillageId" is not null then 9 else null end) as village_lgd_src, 
 
 pin_code, pin_code_src, primary_mobile_number, primary_mobile_number_src, primary_source_of_livelihood, primary_source_of_livelihood_src,primary_source_of_livelihood_timestamp, primary_source_of_livelihood_timestamp_src, disability_status, disability_status_src, marital_status, marital_status_src, educational_qualification, educational_qualification_src, number_of_members_in_family, number_of_members_in_family_src, annual_income_from_all_sources, annual_income_from_all_sources_src,income_group,income_group_src, land_holding, land_holding_src, inserted_ts, updated_ts
@@ -494,12 +494,10 @@ mjjy.source_id as land_holding_src,
 current_timestamp as inserted_ts,
 
 cast(null as timestamp) as updated_ts
---select count(1) --8482956
 from
 (select * from 
 (
 select row_number() over (partition by "aadhaarVaultReference" order by id desc) as rn, * from external_beneficiary_detail
---where "aadhaarVaultReference" = '811954124194'
 ) where rn = 1)ebd
 full outer join
 (SELECT * FROM base_tribal_fields WHERE source_id = 1)s on ebd."aadhaarVaultReference"  = s.aadhaar_number --9080163
@@ -574,7 +572,7 @@ from undefinedvillage_master )
 group by "blockName" having count(1) = 1) b
 on UPPER(TRIM(a.block_name)) = b."blockName")block1
 	on block1."blockName" = UPPER(TRIM(saturation.block_name))
-	
+
 left join
 (select 
 distinct replace(a.gp_code,',','') as "gpCode",
@@ -589,9 +587,35 @@ inner join
 (select distinct UPPER(TRIM(gp_name)) as "gpName" , replace(gp_code,',','') as "gpCode"
 from undefinedvillage_master )
 group by "gpName" having count(1) = 1) b
-on UPPER(TRIM(a.gp_name)) = b."gpName")gp1
-	on gp1."gpName" = UPPER(TRIM(saturation.gp_name))
+on UPPER(TRIM(a.gp_name)) = b."gpName"
+where replace(a.gp_code,',','') not in (select distinct "gpCode"
+		from
+		(
+		select count(1),"gpCode" 
+		from 
+		(
+		
+		select 
+		distinct replace(a.gp_code,',','') as "gpCode",
+		b."gpName",
+		replace(block_code,',','') as "blockCode",
+		UPPER(TRIM(block_name)) as "blockName",
+		replace(district_code,',','') as "districtCode",
+		UPPER(TRIM(district_name)) as "districtName"
+		from undefinedvillage_master a
+		inner join
+		(select count(1),"gpName" from
+		(select distinct UPPER(TRIM(gp_name)) as "gpName" , replace(gp_code,',','') as "gpCode"
+		from undefinedvillage_master )
+		group by "gpName" having count(1) = 1) b
+on UPPER(TRIM(a.gp_name)) = b."gpName"
 
+) 
+group by "gpCode" 
+having count(1) > 1)
+))gp1
+	on gp1."gpName" = UPPER(TRIM(saturation.gp_name))
+	
 left join
 (select 
 distinct replace(spdp_village_id,',','') as "spdpVillageId",
@@ -605,13 +629,12 @@ UPPER(TRIM(district_name)) as "districtName"
 from undefinedvillage_master a
 inner join
 (select count(1),"villageName" from
-(select distinct replace(spdp_village_id,',','') as "spdpVillageId",UPPER(TRIM(village_name)) as "villageName" 
+(select distinct UPPER(TRIM(village_name)) as "villageName" ,replace(spdp_village_id,',','') as "spdpVillageId"
+
 from undefinedvillage_master)
 group by "villageName" having count(1) = 1) b
 on UPPER(TRIM(a.village_name)) = b."villageName") vill1
 	on 
 	vill1."villageName" = UPPER(TRIM(saturation.village_name))
-	
---where aadhaar_number = '811954124194';
 where aadhaar_number is not null and aadhaar_number <> '' 
-------------------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------------
