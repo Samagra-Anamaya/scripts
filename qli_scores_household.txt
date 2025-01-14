@@ -438,9 +438,9 @@ select distinct rationcard_number
     AND "date_of_birth" <> '' -- Ensures date of birth is not empty
     AND  
 	 case when ebd.date_of_birth_src = 0 then 
-	  (DATE_PART('year', CURRENT_DATE) - DATE_PART('year', CAST("date_of_birth" AS DATE))) BETWEEN 14 AND 18 -- Calculates age between 17 and 30
+	  (DATE_PART('year', CURRENT_DATE) - DATE_PART('year', CAST("date_of_birth" AS DATE))) BETWEEN 15 AND 19 -- Calculates age between 17 and 30
 	 else
-	 DATE_PART('year', CURRENT_DATE) - cast(year_of_birth as INT) BETWEEN 14 AND 18 end
+	 DATE_PART('year', CURRENT_DATE) - cast(year_of_birth as INT) BETWEEN 15 AND 19 end
 	 group by rationcard_number
 	 ),
 	 cte_scholarship_premat_avail
@@ -465,9 +465,9 @@ select distinct rationcard_number
     AND "date_of_birth" <> '' -- Ensures date of birth is not empty
     AND  
 	 case when ebd.date_of_birth_src = 0 then 
-	  (DATE_PART('year', CURRENT_DATE) - DATE_PART('year', CAST("date_of_birth" AS DATE))) BETWEEN 19 AND 25 -- Calculates age between 17 and 30
+	  (DATE_PART('year', CURRENT_DATE) - DATE_PART('year', CAST("date_of_birth" AS DATE))) BETWEEN 20 AND 30 -- Calculates age between 17 and 30
 	 else
-	 DATE_PART('year', CURRENT_DATE) - cast(year_of_birth as INT) BETWEEN 19 AND 25 end
+	 DATE_PART('year', CURRENT_DATE) - cast(year_of_birth as INT) BETWEEN 20 AND 30 end
 	 group by rationcard_number
 	 ),
 	 
