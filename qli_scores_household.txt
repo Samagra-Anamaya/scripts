@@ -1,5 +1,5 @@
 --------------------------------------------------------------------------------------------------------------------------------------------
---QLI SCRIPTS
+--QLI SCRIPTSS
 --------------------------------------------------------------------------------------------------------------------------------------------
 DROP TABLE if exists qli_scores_household;
 create table qli_scores_household 
@@ -13,7 +13,8 @@ with
 --TEST - AT
 ------------------------------------------------
 	--removing duplicates from base table (beneficiary table)
-	cte_rationcard_numbers as 
+
+cte_rationcard_numbers as 
 	(
 --	select distinct rationcard_number,village_lgd) from base_tribal_fields_saturated WHERE rationcard_number IS NOT null --2637452
 	
